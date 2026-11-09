@@ -1,0 +1,14 @@
+Mode: SECURE
+Audit log: C:\Users\Vidvath\agent-permission-tester\audit.jsonl
+test_cross_company_read_blocked (__main__.PermissionTests.test_cross_company_read_blocked) ... ok
+test_delete_blocked_and_ticket_unchanged (__main__.PermissionTests.test_delete_blocked_and_ticket_unchanged) ... ok
+test_malicious_ticket_cannot_authorize_delete (__main__.PermissionTests.test_malicious_ticket_cannot_authorize_delete) ... ok
+test_own_company_read_allowed (__main__.PermissionTests.test_own_company_read_allowed) ... ok
+test_revocation_blocks_next_call (__main__.PermissionTests.test_revocation_blocks_next_call) ... ok
+test_unknown_identity_blocked (__main__.PermissionTests.test_unknown_identity_blocked) ... ok
+test_unknown_tool_blocked (__main__.PermissionTests.test_unknown_tool_blocked) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.006s
+
+OK
