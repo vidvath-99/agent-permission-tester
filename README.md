@@ -16,31 +16,46 @@ unauthorised cross-company access.
 
 ## Features
 
-- Seven automated permission tests.
+- Seven automated gateway permission tests.
+- Nine automated API permission and authentication tests.
 - Tenant isolation between two fictional companies.
 - Read-only permissions for the simulated agent.
 - Access revocation checks.
 - Unknown identity and tool rejection.
 - A simulated malicious-instruction scenario.
 - Timestamped audit logs in JSON Lines format.
-- Automated secure-mode tests through GitHub Actions.
+- Both test suites run automatically through GitHub Actions.
 
 ## Requirements
 
 - Python 3.13 is used in CI.
-- No additional Python packages.
-- No AI model or API key required.
+- Python dependencies are pinned in requirements.txt.
+- No AI model or external AI API key is required.
+
+## Install Dependencies
+
+From the project folder in Windows PowerShell, using the existing
+virtual environment:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+```
 
 ## Project Files
 
 | Path | Purpose |
 |---|---|
-| demo.py | Permission gateway, synthetic tickets, and tests |
+| gateway.py | Permission checks, synthetic tickets, and audit logging |
+| demo.py | Seven gateway tests with secure and deliberately broken modes |
+| api.py | FastAPI application factory and bearer-token authentication |
+| test_api.py | Nine API permission and authentication tests |
+| requirements.txt | Pinned Python dependencies |
 | README.md | Project documentation |
-| evidence/secure-tests.txt | Saved passing secure-mode results |
+| evidence/secure-tests.txt | Saved passing gateway secure-mode results |
 | evidence/broken-tests.txt | Saved intentional broken-mode failure |
-| .github/workflows/tests.yml | GitHub Actions test workflow |
-| .gitignore | Excludes generated logs, backups, and local files |
+| .github/workflows/tests.yml | GitHub Actions workflow running both test suites |
+| .gitignore | Git exclusion rules |
 | audit.jsonl | Generated audit log; not tracked by Git |
 
 ## Run the Secure Version
@@ -67,10 +82,37 @@ Ran 7 tests in ...
 OK
 ```
 
+
+## Run the API Tests
+
+From the project folder in Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest -v test_api
+```
+
+Expected summary:
+
+```text
+Ran 9 tests in ...
+
+OK
+```
+
+These tests use an in-process test client; a separately running
+API server is not required.
+
+They cover allowed reads for both companies, cross-company access
+blocking in both directions, denied deletion without state changes,
+the health endpoint, missing and invalid credentials, matching
+responses for missing and cross-company tickets, and access revocation.
+
+Passing these tests does not establish production readiness.
+
 ## Demonstrate a Security Regression
 
 ```powershell
-py -3 demo.py --broken
+.\.venv\Scripts\python.exe -u demo.py --broken
 ```
 
 This disables the tenant-isolation check for that run.
@@ -84,15 +126,16 @@ FAIL: test_cross_company_read_blocked
 FAILED (failures=1)
 ```
 
-This failure is intentional. The other six tests should pass.
+This failure is intentional. The other six gateway tests should pass.
 Broken mode exits with a nonzero status because a test fails.
 
-Run without `--broken` to return to secure mode.
+Run without --broken to return to secure mode.
 No code changes are required.
+
 
 ## Automated Testing
 
-GitHub Actions runs the secure-mode tests on:
+GitHub Actions runs both the secure gateway tests and the API tests on:
 
 - Pushes to main.
 - Pull requests targeting main.
@@ -101,7 +144,10 @@ GitHub Actions runs the secure-mode tests on:
 The workflow uses Python 3.13 and runs:
 
 ```sh
+python -m pip install -r requirements.txt
+python -m pip check
 python -u demo.py
+python -m unittest -v test_api
 ```
 
 Broken mode is not included in the current CI workflow because
@@ -161,19 +207,26 @@ The audit log records what the gateway decided.
 The tests check those decisions against expected behaviour.
 
 Saved test outputs are available in the evidence directory.
-A secure-mode run has also passed in GitHub Actions.
+Both the seven-test secure gateway suite and the nine-test API
+suite have passed in GitHub Actions.
 
 ## Limitations
 
 - This is an educational simulation, not a production system.
 - Agent identities and permissions are hard-coded in memory.
-- An agent identifier is supplied directly; the demo does not
-  implement authentication or verify the caller's identity.
+- Direct gateway calls accept an agent identifier without authentication.
+  The API separately authenticates bearer tokens and maps them to
+  demo identities.
+- API authentication uses two static environment-configured tokens,
+  not a production identity provider or token-management system.
+- Access revocation is tested by changing in-memory gateway state;
+  there is no API endpoint for revoking access.
 - No real AI model processes the ticket content.
 - The malicious-instruction test checks that ticket text does
   not grant delete permission; it does not evaluate an AI
   model's resistance to prompt injection.
 - Audit logs are local append-only writes, not tamper-proof
   storage.
-- Seven passing tests cover the listed scenarios; they do not
-  establish complete security.
+- The seven gateway tests and nine API tests cover the listed
+  scenarios; they do not establish complete security or
+  production readiness.
