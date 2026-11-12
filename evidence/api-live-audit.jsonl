@@ -1,0 +1,4 @@
+﻿{"timestamp": "2026-11-12T12:32:56.814525+00:00", "mode": "SECURE", "agent": "soc-agent", "tool": "tickets:read", "ticket": "INC-001", "decision": "allow", "reason": null}
+{"timestamp": "2026-11-12T12:33:21.109122+00:00", "mode": "SECURE", "agent": "soc-agent", "tool": "tickets:read", "ticket": "INC-002", "decision": "deny", "reason": "tenant_mismatch"}
+{"timestamp": "2026-11-12T12:33:47.146622+00:00", "mode": "SECURE", "agent": "soc-agent", "tool": "tickets:delete", "ticket": "INC-001", "decision": "deny", "reason": "missing_permission"}
+{"timestamp": "2026-11-12T12:35:34.502412+00:00", "mode": "SECURE", "agent": "soc-agent", "tool": "tickets:read", "ticket": "INC-001", "decision": "allow", "reason": null}
