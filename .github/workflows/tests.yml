@@ -35,3 +35,9 @@ jobs:
 
       - name: Run API permission tests
         run: python -m unittest -v test_api
+        
+      - name: Run scenario runner tests
+        run: python -m unittest -v test_runner
+
+      - name: Run secure JSON scenarios
+        run: python runner.py scenarios/permissions.json --report reports/secure-results.json
