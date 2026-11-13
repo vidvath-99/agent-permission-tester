@@ -132,19 +132,61 @@ class RunnerTests(unittest.TestCase):
             load_suite(self.scenario_file)
 
     def test_each_scenario_has_fresh_gateway(self):
-        self.suite["scenarios"] = [
-            copy.deepcopy(self.suite["scenarios"][0]),
-            copy.deepcopy(self.suite["scenarios"][0]),
-        ]
-        self.suite["scenarios"][1]["id"] = (
-            "second-own-company-read"
+        from unittest.mock import patch
+
+        from gateway import Gateway
+
+        class WritableTestGateway(Gateway):
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.identities["soc-agent"]["scopes"].add(
+                    "tickets:delete"
+                )
+
+        suite = {
+            "schema_version": 1,
+            "name": "Scenario state isolation",
+            "scenarios": [
+                {
+                    "id": "delete-own-ticket",
+                    "description": "Delete a ticket in the first gateway.",
+                    "agent": "soc-agent",
+                    "tool": "tickets:delete",
+                    "ticket": "INC-001",
+                    "expected": {
+                        "decision": "allow",
+                        "reason": None,
+                    },
+                },
+                {
+                    "id": "read-original-ticket",
+                    "description": "Read the ticket in a fresh gateway.",
+                    "agent": "soc-agent",
+                    "tool": "tickets:read",
+                    "ticket": "INC-001",
+                    "expected": {
+                        "decision": "allow",
+                        "reason": None,
+                    },
+                },
+            ],
+        }
+
+        with patch("runner.Gateway", WritableTestGateway):
+            report = run_suite(suite)
+
+        self.assertEqual(
+            report["summary"],
+            {"total": 2, "passed": 2, "failed": 0},
         )
 
-        report = run_suite(self.suite)
-
-        self.assertEqual(report["summary"]["passed"], 2)
         for result in report["results"]:
+            self.assertTrue(result["passed"])
             self.assertEqual(len(result["audit"]), 1)
+            self.assertEqual(
+                result["audit"][0]["decision"],
+                "allow",
+            )
 
     def run_cli(self, *extra_args):
         self.write_suite(self.suite)
@@ -217,5 +259,6 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(report_path.exists())
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+
+    
+    
