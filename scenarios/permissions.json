@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "name": "Default gateway permission checks",
+  "scenarios": [
+    {
+      "id": "own-company-read",
+      "description": "Company A's agent can read its own ticket.",
+      "agent": "soc-agent",
+      "tool": "tickets:read",
+      "ticket": "INC-001",
+      "expected": {
+        "decision": "allow",
+        "reason": null
+      }
+    },
+    {
+      "id": "cross-company-read",
+      "description": "Company A's agent cannot read Company B's ticket.",
+      "agent": "soc-agent",
+      "tool": "tickets:read",
+      "ticket": "INC-002",
+      "expected": {
+        "decision": "deny",
+        "reason": "tenant_mismatch"
+      }
+    },
+    {
+      "id": "read-only-delete",
+      "description": "A read-only agent cannot delete a ticket.",
+      "agent": "soc-agent",
+      "tool": "tickets:delete",
+      "ticket": "INC-001",
+      "expected": {
+        "decision": "deny",
+        "reason": "missing_permission"
+      }
+    },
+    {
+      "id": "unknown-tool",
+      "description": "An unrecognised tool is rejected.",
+      "agent": "soc-agent",
+      "tool": "shell:execute",
+      "ticket": "INC-001",
+      "expected": {
+        "decision": "deny",
+        "reason": "unknown_tool"
+      }
+    },
+    {
+      "id": "unknown-identity",
+      "description": "An unregistered agent is rejected.",
+      "agent": "unregistered-agent",
+      "tool": "tickets:read",
+      "ticket": "INC-001",
+      "expected": {
+        "decision": "deny",
+        "reason": "unknown_identity"
+      }
+    }
+  ]
+}
