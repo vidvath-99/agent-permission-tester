@@ -18,13 +18,20 @@ unauthorised cross-company access.
 
 - Seven automated gateway permission tests.
 - Nine automated API permission and authentication tests.
+- Twelve automated scenario-runner tests.
+- Nine automated HTML-report tests.
+- JSON-defined permission scenarios with expected decisions and denial reasons.
+- Secure and deliberately broken scenario runs.
+- JSON results and readable HTML reports showing expected versus actual outcomes.
 - Tenant isolation between two fictional companies.
 - Read-only permissions for the simulated agent.
 - Access revocation checks.
 - Unknown identity and tool rejection.
 - A simulated malicious-instruction scenario.
 - Timestamped audit logs in JSON Lines format.
-- Both test suites run automatically through GitHub Actions.
+- All four test suites, secure JSON scenarios, and HTML report generation
+  run automatically through GitHub Actions.
+
 
 ## Requirements
 
@@ -50,13 +57,19 @@ virtual environment:
 | demo.py | Seven gateway tests with secure and deliberately broken modes |
 | api.py | FastAPI application factory and bearer-token authentication |
 | test_api.py | Nine API permission and authentication tests |
+| runner.py | Runs JSON permission scenarios and writes JSON results |
+| test_runner.py | Twelve scenario-runner tests |
+| scenarios/permissions.json | Five default gateway permission scenarios |
+| report_html.py | Converts JSON scenario results into an HTML report |
+| test_report_html.py | Nine HTML-report tests |
 | requirements.txt | Pinned Python dependencies |
 | README.md | Project documentation |
 | evidence/secure-tests.txt | Saved passing gateway secure-mode results |
 | evidence/broken-tests.txt | Saved intentional broken-mode failure |
-| .github/workflows/tests.yml | GitHub Actions workflow running both test suites |
+| .github/workflows/tests.yml | Runs all four test suites, secure scenarios, and HTML generation |
 | .gitignore | Git exclusion rules |
 | audit.jsonl | Generated audit log; not tracked by Git |
+| reports/ | Generated JSON results and HTML reports |
 
 ## Run the Secure Version
 
@@ -135,7 +148,8 @@ No code changes are required.
 
 ## Automated Testing
 
-GitHub Actions runs both the secure gateway tests and the API tests on:
+GitHub Actions runs all four test suites, the secure JSON scenarios,
+and HTML report generation on:
 
 - Pushes to main.
 - Pull requests targeting main.
@@ -148,10 +162,68 @@ python -m pip install -r requirements.txt
 python -m pip check
 python -u demo.py
 python -m unittest -v test_api
+python -m unittest -v test_runner
+python runner.py scenarios/permissions.json --report reports/secure-results.json
+python -m unittest -v test_report_html
+python report_html.py reports/secure-results.json --output reports/secure-results.html
 ```
 
-Broken mode is not included in the current CI workflow because
-its test failure is intentional.
+The automated test suites contain 37 tests:
+
+- Seven gateway tests.
+- Nine API tests.
+- Twelve scenario-runner tests.
+- Nine HTML-report tests.
+
+The secure JSON scenario run separately checks five scenarios.
+
+Runner tests include checks that deliberately broken mode detects
+cross-company access and returns a failure status. However, the workflow
+does not run the standalone broken demonstration as a separate step,
+because that demonstration intentionally exits with code 1.
+
+
+## Run JSON Scenarios and Generate HTML Reports
+
+From the project folder in Windows PowerShell, run the secure scenarios:
+
+```powershell
+.\.venv\Scripts\python.exe .\runner.py .\scenarios\permissions.json --report .\reports\secure-results.json
+.\.venv\Scripts\python.exe .\report_html.py .\reports\secure-results.json --output .\reports\secure-results.html
+Start-Process ".\reports\secure-results.html"
+```
+
+Expected result: five scenarios pass, with zero failures.
+
+A scenario passes when the actual decision and denial reason match
+the expected outcome. An expected denial is therefore a passing result
+when the gateway correctly blocks the action.
+
+To demonstrate a tenant-isolation regression, use separate report files:
+
+```powershell
+.\.venv\Scripts\python.exe .\runner.py .\scenarios\permissions.json --broken --report .\reports\broken-results.json
+$runnerExitCode = $LASTEXITCODE
+Write-Output "Broken runner exit code: $runnerExitCode"
+.\.venv\Scripts\python.exe .\report_html.py .\reports\broken-results.json --output .\reports\broken-results.html
+Start-Process ".\reports\broken-results.html"
+```
+
+Expected result: four scenarios pass and cross-company-read fails.
+That scenario expects deny with tenant_mismatch, but broken mode
+returns allow.
+
+The broken runner exits with code 1 because it detected a regression.
+This failure is intentional; the JSON results can still be converted
+into an HTML report.
+
+The HTML report shows the mode, scenario totals, expected and actual
+outcomes, and any execution errors. Generating HTML does not fix or
+rerun the permission checks.
+
+The secure and broken reports use different filenames, so generating
+the broken report does not overwrite the secure report.
+
 
 ## View Audit Logs
 
