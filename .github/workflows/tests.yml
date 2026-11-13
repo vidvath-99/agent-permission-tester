@@ -41,3 +41,10 @@ jobs:
 
       - name: Run secure JSON scenarios
         run: python runner.py scenarios/permissions.json --report reports/secure-results.json
+
+
+      - name: Run HTML report tests
+        run: python -m unittest -v test_report_html
+
+      - name: Generate secure HTML report
+        run: python report_html.py reports/secure-results.json --output reports/secure-results.html
