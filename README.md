@@ -224,6 +224,18 @@ rerun the permission checks.
 The secure and broken reports use different filenames, so generating
 the broken report does not overwrite the secure report.
 
+## Splunk Integration
+
+The gateway's JSON Lines audit log can be monitored with Splunk Enterprise.
+
+The local demonstration includes verified collection of newly appended
+events and a saved report summarizing secure-mode denials by reason.
+These are synthetic permission-test events, not confirmed real attacks.
+
+See [Splunk setup and verification](splunk/README.md) for configuration
+steps and limitations. The report query is saved in
+[splunk/blocked_calls_by_reason.spl](splunk/blocked_calls_by_reason.spl).
+
 
 ## View Audit Logs
 
