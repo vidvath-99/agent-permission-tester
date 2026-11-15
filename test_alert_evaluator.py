@@ -4,8 +4,11 @@ from pathlib import Path
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from alert_evaluator import evaluate_events, read_audit_events
-
+from alert_evaluator import (
+    evaluate_events,
+    read_audit_events,
+    write_alert_once,
+)
 class AuditReaderTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -209,3 +212,88 @@ class AlertEvaluatorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class AlertWriterTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.output = Path(self.temp_dir.name) / "alerts.jsonl"
+        self.result = {
+            "rule_id": "secure_denials_threshold",
+            "window_start": "2026-11-15T01:55:00+00:00",
+            "window_end": "2026-11-15T02:00:00+00:00",
+            "threshold": 5,
+            "blocked_calls": 5,
+            "triggered": True,
+        }
+
+    def test_triggered_result_is_written(self):
+        self.assertTrue(write_alert_once(self.result, self.output))
+        self.assertEqual(read_audit_events(self.output), [self.result])
+        self.assertTrue(self.output.read_bytes().endswith(b"\n"))
+
+    def test_non_triggered_result_does_not_create_file(self):
+        result = dict(self.result, triggered=False, blocked_calls=4)
+
+        self.assertFalse(write_alert_once(result, self.output))
+        self.assertFalse(self.output.exists())
+
+    def test_duplicate_does_not_change_file(self):
+        write_alert_once(self.result, self.output)
+        original = self.output.read_bytes()
+
+        self.assertFalse(
+            write_alert_once(dict(self.result), self.output)
+        )
+        self.assertEqual(self.output.read_bytes(), original)
+
+    def test_different_identity_is_written(self):
+        write_alert_once(self.result, self.output)
+        changes = [
+            {"rule_id": "another_rule"},
+            {"window_start": "2026-11-15T01:54:00+00:00"},
+            {"window_end": "2026-11-15T02:01:00+00:00"},
+            {"threshold": 4},
+        ]
+
+        for change in changes:
+            with self.subTest(change=change):
+                self.assertTrue(
+                    write_alert_once(
+                        dict(self.result, **change), self.output
+                    )
+                )
+
+        self.assertEqual(len(read_audit_events(self.output)), 5)
+
+    def test_existing_record_without_final_newline_is_preserved(self):
+        self.output.write_text(
+            json.dumps(self.result), encoding="utf-8"
+        )
+        next_result = dict(
+            self.result, window_end="2026-11-15T02:01:00+00:00"
+        )
+
+        self.assertTrue(write_alert_once(next_result, self.output))
+        self.assertEqual(
+            read_audit_events(self.output),
+            [self.result, next_result],
+        )
+
+    def test_invalid_existing_json_is_not_modified(self):
+        original = b'{"invalid":\n'
+        self.output.write_bytes(original)
+
+        with self.assertRaises(ValueError):
+            write_alert_once(self.result, self.output)
+
+        self.assertEqual(self.output.read_bytes(), original)
+
+    def test_missing_identity_fields_are_rejected(self):
+        original = b'{}\n'
+        self.output.write_bytes(original)
+
+        with self.assertRaisesRegex(ValueError, "identity fields"):
+            write_alert_once(self.result, self.output)
+
+        self.assertEqual(self.output.read_bytes(), original)

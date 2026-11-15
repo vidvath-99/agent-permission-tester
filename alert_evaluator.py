@@ -79,3 +79,48 @@ def evaluate_events(events, *, now=None, threshold=5, window_minutes=5):
         "blocked_calls": blocked_calls,
         "triggered": blocked_calls >= threshold,
     }
+
+
+def write_alert_once(result, output_path):
+    """Append a triggered result once per rule, window, and threshold."""
+    if not result["triggered"]:
+        return False
+
+    identity_fields = (
+        "rule_id",
+        "window_start",
+        "window_end",
+        "threshold",
+    )
+    identity = tuple(result[field] for field in identity_fields)
+    output_path = Path(output_path)
+    needs_newline = False
+
+    if output_path.exists():
+        existing_alerts = read_audit_events(output_path)
+
+        for alert in existing_alerts:
+            if not all(field in alert for field in identity_fields):
+                raise ValueError("Existing alert is missing identity fields")
+
+        if any(
+            tuple(alert[field] for field in identity_fields) == identity
+            for alert in existing_alerts
+        ):
+            return False
+
+        with output_path.open("rb") as existing_file:
+            existing_file.seek(0, 2)
+            if existing_file.tell():
+                existing_file.seek(-1, 2)
+                needs_newline = existing_file.read(1) != b"\n"
+
+    record = json.dumps(result, allow_nan=False)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("a", encoding="utf-8", newline="\n") as alert_file:
+        if needs_newline:
+            alert_file.write("\n")
+        alert_file.write(record + "\n")
+
+    return True

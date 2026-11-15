@@ -5,3 +5,4 @@ audit.jsonl
 .venv/
 .env
 /reports/
+/alerts.jsonl
