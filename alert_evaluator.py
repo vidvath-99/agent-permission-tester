@@ -80,6 +80,38 @@ def evaluate_events(events, *, now=None, threshold=5, window_minutes=5):
         "triggered": blocked_calls >= threshold,
     }
 
+def evaluate_audit_file(
+    audit_path,
+    output_path,
+    *,
+    now=None,
+    threshold=5,
+    window_minutes=5,
+):
+    """Evaluate an audit file and write an alert to a separate file."""
+    audit_path = Path(audit_path).resolve(strict=True)
+    output_path = Path(output_path).resolve()
+
+    if audit_path == output_path:
+        raise ValueError("audit input and alert output must be different files")
+
+    if output_path.exists() and audit_path.samefile(output_path):
+        raise ValueError("audit input and alert output must be different files")
+
+    events = read_audit_events(audit_path)
+    result = evaluate_events(
+        events,
+        now=now,
+        threshold=threshold,
+        window_minutes=window_minutes,
+    )
+    written = write_alert_once(result, output_path)
+
+    return {
+        "evaluation": result,
+        "alert_written": written,
+    }
+
 
 def write_alert_once(result, output_path):
     """Append a triggered result once per rule, window, and threshold."""

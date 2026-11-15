@@ -5,10 +5,12 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from alert_evaluator import (
+    evaluate_audit_file,
     evaluate_events,
     read_audit_events,
     write_alert_once,
 )
+
 class AuditReaderTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -208,6 +210,108 @@ class AlertEvaluatorTests(unittest.TestCase):
         self.assertEqual(
             result["window_end"], self.now.isoformat()
         )
+class AuditFileEvaluationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.root = Path(self.temp_dir.name)
+        self.audit = self.root / "audit.jsonl"
+        self.output = self.root / "alerts.jsonl"
+        self.now = datetime(
+            2026, 11, 15, 2, 0, tzinfo=timezone.utc
+        )
+        self.event = {
+            "timestamp": self.now.isoformat(),
+            "mode": "SECURE",
+            "decision": "deny",
+        }
+        self.audit.write_text(
+            json.dumps(self.event) + "\n",
+            encoding="utf-8",
+        )
+
+    def evaluate(self, **options):
+        return evaluate_audit_file(
+            self.audit,
+            self.output,
+            now=self.now,
+            **options,
+        )
+
+    def test_triggered_evaluation_writes_alert_and_preserves_audit(self):
+        original = self.audit.read_bytes()
+
+        outcome = self.evaluate(threshold=1)
+
+        self.assertTrue(outcome["evaluation"]["triggered"])
+        self.assertTrue(outcome["alert_written"])
+        self.assertEqual(
+            read_audit_events(self.output),
+            [outcome["evaluation"]],
+        )
+        self.assertEqual(self.audit.read_bytes(), original)
+
+    def test_below_threshold_does_not_create_output(self):
+        outcome = self.evaluate()
+
+        self.assertFalse(outcome["evaluation"]["triggered"])
+        self.assertFalse(outcome["alert_written"])
+        self.assertFalse(self.output.exists())
+
+    def test_repeated_evaluation_does_not_duplicate_alert(self):
+        self.evaluate(threshold=1)
+        original = self.output.read_bytes()
+
+        outcome = self.evaluate(threshold=1)
+
+        self.assertTrue(outcome["evaluation"]["triggered"])
+        self.assertFalse(outcome["alert_written"])
+        self.assertEqual(self.output.read_bytes(), original)
+
+    def test_same_input_and_output_is_rejected(self):
+        original = self.audit.read_bytes()
+
+        with self.assertRaisesRegex(ValueError, "different files"):
+            evaluate_audit_file(
+                self.audit,
+                self.audit,
+                now=self.now,
+                threshold=1,
+            )
+
+        self.assertEqual(self.audit.read_bytes(), original)
+
+    def test_equivalent_path_is_rejected(self):
+        original = self.audit.read_bytes()
+        alias = self.root / "unused" / ".." / "audit.jsonl"
+
+        with self.assertRaisesRegex(ValueError, "different files"):
+            evaluate_audit_file(
+                self.audit,
+                alias,
+                now=self.now,
+                threshold=1,
+            )
+
+        self.assertEqual(self.audit.read_bytes(), original)
+
+    def test_missing_input_does_not_create_output(self):
+        self.audit.unlink()
+
+        with self.assertRaises(FileNotFoundError):
+            self.evaluate(threshold=1)
+
+        self.assertFalse(self.output.exists())
+
+    def test_invalid_input_does_not_modify_existing_output(self):
+        self.audit.write_text('{"invalid":\n', encoding="utf-8")
+        original = b'{"existing": true}\n'
+        self.output.write_bytes(original)
+
+        with self.assertRaises(ValueError):
+            self.evaluate(threshold=1)
+
+        self.assertEqual(self.output.read_bytes(), original)
 
 
 if __name__ == "__main__":
