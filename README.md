@@ -20,6 +20,7 @@ unauthorised cross-company access.
 - Nine automated API permission and authentication tests.
 - Twelve automated scenario-runner tests.
 - Nine automated HTML-report tests.
+- Nineteen automated alert-evaluator and audit-reader tests.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
 - Secure and deliberately broken scenario runs.
 - JSON results and readable HTML reports showing expected versus actual outcomes.
@@ -29,8 +30,9 @@ unauthorised cross-company access.
 - Unknown identity and tool rejection.
 - A simulated malicious-instruction scenario.
 - Timestamped audit logs in JSON Lines format.
-- All four test suites, secure JSON scenarios, and HTML report generation
+- All five test suites, secure JSON scenarios, and HTML report generation
   run automatically through GitHub Actions.
+
 
 
 ## Requirements
@@ -66,10 +68,12 @@ virtual environment:
 | README.md | Project documentation |
 | evidence/secure-tests.txt | Saved passing gateway secure-mode results |
 | evidence/broken-tests.txt | Saved intentional broken-mode failure |
-| .github/workflows/tests.yml | Runs all four test suites, secure scenarios, and HTML generation |
+| .github/workflows/tests.yml | Runs all five test suites, secure scenarios, and HTML generation |
 | .gitignore | Git exclusion rules |
 | audit.jsonl | Generated audit log; not tracked by Git |
 | reports/ | Generated JSON results and HTML reports |
+| alert_evaluator.py | Reads JSON Lines audit records and evaluates a secure-denial threshold; does not write or send alerts |
+| test_alert_evaluator.py | Nineteen alert-evaluator and audit-reader tests |
 
 ## Run the Secure Version
 
@@ -148,7 +152,7 @@ No code changes are required.
 
 ## Automated Testing
 
-GitHub Actions runs all four test suites, the secure JSON scenarios,
+GitHub Actions runs all five test suites, the secure JSON scenarios,
 and HTML report generation on:
 
 - Pushes to main.
@@ -163,17 +167,19 @@ python -m pip check
 python -u demo.py
 python -m unittest -v test_api
 python -m unittest -v test_runner
+python -m unittest -v test_alert_evaluator
 python runner.py scenarios/permissions.json --report reports/secure-results.json
 python -m unittest -v test_report_html
 python report_html.py reports/secure-results.json --output reports/secure-results.html
 ```
 
-The automated test suites contain 37 tests:
+The automated test suites contain 56 tests:
 
 - Seven gateway tests.
 - Nine API tests.
 - Twelve scenario-runner tests.
 - Nine HTML-report tests.
+- Nineteen alert-evaluator and audit-reader tests.
 
 The secure JSON scenario run separately checks five scenarios.
 
@@ -223,6 +229,32 @@ rerun the permission checks.
 
 The secure and broken reports use different filenames, so generating
 the broken report does not overwrite the secure report.
+
+## Audit Reader and Alert Evaluator
+
+The Python module alert_evaluator.py provides two functions:
+
+- read_audit_events(path) reads JSON Lines records without modifying the
+  input file. Blank lines are skipped. Invalid JSON and non-object records
+  are rejected with a line number; a missing file raises an error.
+- evaluate_events(events, ...) counts SECURE-mode deny decisions within a
+  configurable time window. The default threshold is five denials in five
+  minutes, and reaching the threshold triggers the result.
+
+The evaluator excludes events exactly at the window start and includes
+events exactly at the evaluation time. Future events are excluded.
+Relevant events must have valid timezone-aware timestamps.
+
+Run the tests with:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest -v test_alert_evaluator
+```
+
+This module is separate from the saved Splunk query. It currently reads
+and evaluates records only; it does not write alerts, send notifications,
+schedule evaluations, or prevent duplicate alerts.
+
 
 ## Splunk Integration
 
