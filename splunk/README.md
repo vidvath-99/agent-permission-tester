@@ -69,3 +69,6 @@ Enable the time-range picker when saving the report.
 - This setup does not configure scheduled alerts or external notifications.
 - The SPL file preserves the query but does not automatically install the
   Splunk index, file input, or saved report.
+- The verified local instance uses the Splunk Free license group, which
+  does not support native alerting. Searches and the saved report were
+  verified; scheduled alerts and external notifications were not configured.
