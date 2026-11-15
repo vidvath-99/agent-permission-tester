@@ -1,4 +1,31 @@
+import json
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
+
+def read_audit_events(path):
+    """Read JSON Lines audit records without modifying the input file."""
+    events = []
+
+    with Path(path).open("r", encoding="utf-8") as audit_file:
+        for line_number, line in enumerate(audit_file, start=1):
+            if not line.strip():
+                continue
+
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Invalid JSON on audit line {line_number}"
+                ) from exc
+
+            if not isinstance(event, dict):
+                raise ValueError(
+                    f"Audit line {line_number} must be an object"
+                )
+
+            events.append(event)
+
+    return events
 
 
 def evaluate_events(events, *, now=None, threshold=5, window_minutes=5):

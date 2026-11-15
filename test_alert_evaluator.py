@@ -1,8 +1,56 @@
+import json
+import tempfile
+from pathlib import Path
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from alert_evaluator import evaluate_events
+from alert_evaluator import evaluate_events, read_audit_events
 
+class AuditReaderTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.audit_file = Path(self.temp_dir.name) / "audit.jsonl"
+
+    def test_reads_events_and_skips_blank_lines(self):
+        events = [
+            {"mode": "SECURE", "decision": "deny"},
+            {"mode": "BROKEN", "decision": "allow"},
+        ]
+        content = "\n\n".join(json.dumps(event) for event in events)
+        self.audit_file.write_text(content + "\n", encoding="utf-8")
+
+        self.assertEqual(read_audit_events(self.audit_file), events)
+        self.assertEqual(
+            self.audit_file.read_text(encoding="utf-8"),
+            content + "\n",
+        )
+
+    def test_empty_file_returns_empty_list(self):
+        self.audit_file.write_text("", encoding="utf-8")
+
+        self.assertEqual(read_audit_events(self.audit_file), [])
+
+    def test_invalid_json_reports_line_number(self):
+        self.audit_file.write_text(
+            '{}\n{"timestamp":\n',
+            encoding="utf-8",
+        )
+
+        with self.assertRaisesRegex(ValueError, "line 2"):
+            read_audit_events(self.audit_file)
+
+    def test_non_object_record_is_rejected(self):
+        self.audit_file.write_text('[]\n', encoding="utf-8")
+
+        with self.assertRaisesRegex(
+            ValueError, "line 1 must be an object"
+        ):
+            read_audit_events(self.audit_file)
+
+    def test_missing_file_is_an_error(self):
+        with self.assertRaises(FileNotFoundError):
+            read_audit_events(self.audit_file)
 
 class AlertEvaluatorTests(unittest.TestCase):
     def setUp(self):
