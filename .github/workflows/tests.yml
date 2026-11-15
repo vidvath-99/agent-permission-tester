@@ -42,6 +42,9 @@ jobs:
       - name: Run alert evaluator tests
         run: python -m unittest -v test_alert_evaluator
 
+      - name: Run alert CLI tests
+        run: python -m unittest -v test_alert_cli
+
       - name: Run secure JSON scenarios
         run: python runner.py scenarios/permissions.json --report reports/secure-results.json
 
