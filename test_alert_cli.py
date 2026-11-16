@@ -66,6 +66,26 @@ class AlertCliTests(unittest.TestCase):
         self.assertEqual(self.output.read_bytes(), original_output)
         self.assertEqual(self.audit.read_bytes(), original_audit)
 
+    def test_below_threshold_does_not_create_output(self):
+        original_audit = self.audit.read_bytes()
+
+        result = self.invoke(
+            self.audit,
+            "--output", self.output,
+            "--threshold", "2",
+            "--now", self.timestamp,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        outcome = json.loads(result.stdout)
+        self.assertEqual(outcome["evaluation"]["blocked_calls"], 1)
+        self.assertEqual(outcome["evaluation"]["threshold"], 2)
+        self.assertFalse(outcome["evaluation"]["triggered"])
+        self.assertFalse(outcome["alert_written"])
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.audit.read_bytes(), original_audit)
+
     def test_invalid_threshold_does_not_create_output(self):
         result = self.invoke(
             self.audit,
