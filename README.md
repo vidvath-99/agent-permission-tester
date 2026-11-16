@@ -22,7 +22,7 @@ unauthorised cross-company access.
 - Nine automated HTML-report tests.
 - Thirty-three automated audit-reader, evaluator, alert-writer, and
   file-processing tests.
-- Five automated command-line interface tests.
+- Six automated command-line interface tests.
 - Local JSON Lines alerts with exact-evaluation duplicate prevention.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
 - Secure and deliberately broken scenario runs.
@@ -76,7 +76,7 @@ virtual environment:
 | alert_evaluator.py | Reads audit records, evaluates denial thresholds, and writes deduplicated local alerts |
 | test_alert_evaluator.py | Thirty-three reader, evaluator, writer, and file-processing tests |
 | alert_cli.py | Command-line interface for audit evaluation and local alert writing |
-| test_alert_cli.py | Five command-line interface tests |
+| test_alert_cli.py | Six command-line interface tests |
 | alerts.jsonl | Default generated alert output; not tracked by Git |
 | .github/workflows/tests.yml | Runs all six test suites, secure scenarios, and HTML generation |
 
@@ -180,14 +180,14 @@ python report_html.py reports/secure-results.json --output reports/secure-result
 ```
 
 
-The automated test suites contain 75 tests:
+The automated test suites contain 76 tests:
 
 - Seven gateway tests.
 - Nine API tests.
 - Twelve scenario-runner tests.
 - Nine HTML-report tests.
 - Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
-- Five command-line interface tests.
+- Six command-line interface tests.
 
 The secure JSON scenario run separately checks five scenarios.
 
@@ -290,8 +290,8 @@ Run the evaluator and CLI tests together:
 .\.venv\Scripts\python.exe -m unittest -v test_alert_evaluator test_alert_cli
 ```
 
-The combined suite contains 38 tests: 33 reader, evaluator, writer,
-and file-processing tests, plus five CLI tests.
+The combined suite contains 39 tests: 33 reader, evaluator, writer,
+and file-processing tests, plus six CLI tests.
 
 This is a local demonstration, separate from the saved Splunk query.
 It does not provide a background scheduler, notification delivery,

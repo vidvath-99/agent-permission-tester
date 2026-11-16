@@ -35,6 +35,20 @@ class AlertCliTests(unittest.TestCase):
             cwd=self.root,
         )
 
+    def test_missing_input_does_not_create_output(self):
+        missing_audit = self.root / "missing-audit.jsonl"
+
+        result = self.invoke(
+            missing_audit,
+            "--output", self.output,
+            "--now", self.timestamp,
+        )
+
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertTrue(result.stderr.strip())
+        self.assertFalse(missing_audit.exists())
+        self.assertFalse(self.output.exists())
+
     def test_help(self):
         result = self.invoke("--help")
 
