@@ -20,7 +20,10 @@ unauthorised cross-company access.
 - Nine automated API permission and authentication tests.
 - Twelve automated scenario-runner tests.
 - Nine automated HTML-report tests.
-- Nineteen automated alert-evaluator and audit-reader tests.
+- Thirty-three automated audit-reader, evaluator, alert-writer, and
+  file-processing tests.
+- Four automated command-line interface tests.
+- Local JSON Lines alerts with exact-evaluation duplicate prevention.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
 - Secure and deliberately broken scenario runs.
 - JSON results and readable HTML reports showing expected versus actual outcomes.
@@ -30,9 +33,8 @@ unauthorised cross-company access.
 - Unknown identity and tool rejection.
 - A simulated malicious-instruction scenario.
 - Timestamped audit logs in JSON Lines format.
-- All five test suites, secure JSON scenarios, and HTML report generation
+- All six test suites, secure JSON scenarios, and HTML report generation
   run automatically through GitHub Actions.
-
 
 
 ## Requirements
@@ -68,12 +70,15 @@ virtual environment:
 | README.md | Project documentation |
 | evidence/secure-tests.txt | Saved passing gateway secure-mode results |
 | evidence/broken-tests.txt | Saved intentional broken-mode failure |
-| .github/workflows/tests.yml | Runs all five test suites, secure scenarios, and HTML generation |
 | .gitignore | Git exclusion rules |
 | audit.jsonl | Generated audit log; not tracked by Git |
 | reports/ | Generated JSON results and HTML reports |
-| alert_evaluator.py | Reads JSON Lines audit records and evaluates a secure-denial threshold; does not write or send alerts |
-| test_alert_evaluator.py | Nineteen alert-evaluator and audit-reader tests |
+| alert_evaluator.py | Reads audit records, evaluates denial thresholds, and writes deduplicated local alerts |
+| test_alert_evaluator.py | Thirty-three reader, evaluator, writer, and file-processing tests |
+| alert_cli.py | Command-line interface for audit evaluation and local alert writing |
+| test_alert_cli.py | Four command-line interface tests |
+| alerts.jsonl | Default generated alert output; not tracked by Git |
+| .github/workflows/tests.yml | Runs all six test suites, secure scenarios, and HTML generation |
 
 ## Run the Secure Version
 
@@ -152,7 +157,7 @@ No code changes are required.
 
 ## Automated Testing
 
-GitHub Actions runs all five test suites, the secure JSON scenarios,
+GitHub Actions runs all six test suites, the secure JSON scenarios,
 and HTML report generation on:
 
 - Pushes to main.
@@ -168,18 +173,21 @@ python -u demo.py
 python -m unittest -v test_api
 python -m unittest -v test_runner
 python -m unittest -v test_alert_evaluator
+python -m unittest -v test_alert_cli
 python runner.py scenarios/permissions.json --report reports/secure-results.json
 python -m unittest -v test_report_html
 python report_html.py reports/secure-results.json --output reports/secure-results.html
 ```
 
-The automated test suites contain 56 tests:
+
+The automated test suites contain 74 tests:
 
 - Seven gateway tests.
 - Nine API tests.
 - Twelve scenario-runner tests.
 - Nine HTML-report tests.
-- Nineteen alert-evaluator and audit-reader tests.
+- Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
+- Four command-line interface tests.
 
 The secure JSON scenario run separately checks five scenarios.
 
@@ -232,7 +240,7 @@ the broken report does not overwrite the secure report.
 
 ## Audit Reader and Alert Evaluator
 
-The Python module alert_evaluator.py provides two functions:
+The core reading and evaluation functions in alert_evaluator.py are:
 
 - read_audit_events(path) reads JSON Lines records without modifying the
   input file. Blank lines are skipped. Invalid JSON and non-object records
@@ -251,9 +259,43 @@ Run the tests with:
 .\.venv\Scripts\python.exe -m unittest -v test_alert_evaluator
 ```
 
-This module is separate from the saved Splunk query. It currently reads
-and evaluates records only; it does not write alerts, send notifications,
-schedule evaluations, or prevent duplicate alerts.
+### Local Alert Writing and CLI
+
+The module also supports writing triggered evaluations to a local JSON
+Lines alert file. File-processing tests cover audit-input preservation,
+invalid input, duplicate evaluations, and rejection of matching input
+and output paths.
+
+The alert_cli.py script provides a command-line interface:
+
+```powershell
+.\.venv\Scripts\python.exe .\alert_cli.py --help
+```
+
+To evaluate an existing audit log and write triggered alerts:
+
+```powershell
+.\.venv\Scripts\python.exe .\alert_cli.py .\audit.jsonl --output .\alerts.jsonl
+```
+
+Duplicate prevention applies to an exact evaluation identity, not a
+cooldown period. Evaluations with different window boundaries can
+produce separate alerts even when their windows overlap.
+
+The default alerts.jsonl output is excluded from version control.
+
+Run the evaluator and CLI tests together:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest -v test_alert_evaluator test_alert_cli
+```
+
+The combined suite contains 37 tests: 33 reader, evaluator, writer,
+and file-processing tests, plus four CLI tests.
+
+This is a local demonstration, separate from the saved Splunk query.
+It does not provide a background scheduler, notification delivery,
+tamper-proof storage, or guarantees for concurrent alert writers.
 
 
 ## Splunk Integration
