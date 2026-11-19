@@ -17,12 +17,14 @@ unauthorised cross-company access.
 ## Features
 
 - Seven automated gateway permission tests.
-- Nine automated API permission and authentication tests.
+- Ten automated API permission and authentication tests.
 - Twelve automated scenario-runner tests.
 - Nine automated HTML-report tests.
 - Thirty-three automated audit-reader, evaluator, alert-writer, and
   file-processing tests.
-- Six automated command-line interface tests.
+- Six automated alert CLI tests.
+- Eleven automated API scenario validation and execution tests.
+- Five automated API-runner CLI tests.
 - Local JSON Lines alerts with exact-evaluation duplicate prevention.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
 - Secure and deliberately broken scenario runs.
@@ -33,7 +35,7 @@ unauthorised cross-company access.
 - Unknown identity and tool rejection.
 - A simulated malicious-instruction scenario.
 - Timestamped audit logs in JSON Lines format.
-- All six test suites, secure JSON scenarios, and HTML report generation
+- All eight test suites, secure JSON scenarios, and HTML report generation
   run automatically through GitHub Actions.
 
 
@@ -60,7 +62,11 @@ virtual environment:
 | gateway.py | Permission checks, synthetic tickets, and audit logging |
 | demo.py | Seven gateway tests with secure and deliberately broken modes |
 | api.py | FastAPI application factory and bearer-token authentication |
-| test_api.py | Nine API permission and authentication tests |
+| test_api.py | Ten API permission and authentication tests |
+| api_runner.py | Runs local API scenarios with optional JSON reports |
+| test_api_runner.py | Eleven API scenario validation and execution tests |
+| test_api_runner_cli.py | Five API-runner CLI tests |
+| scenarios/api-permissions.json | Four default API scenarios |
 | runner.py | Runs JSON permission scenarios and writes JSON results |
 | test_runner.py | Twelve scenario-runner tests |
 | scenarios/permissions.json | Five default gateway permission scenarios |
@@ -78,7 +84,7 @@ virtual environment:
 | alert_cli.py | Command-line interface for audit evaluation and local alert writing |
 | test_alert_cli.py | Six command-line interface tests |
 | alerts.jsonl | Default generated alert output; not tracked by Git |
-| .github/workflows/tests.yml | Runs all six test suites, secure scenarios, and HTML generation |
+| .github/workflows/tests.yml | Runs all eight test suites, secure scenarios, and HTML generation |
 
 ## Run the Secure Version
 
@@ -116,7 +122,7 @@ From the project folder in Windows PowerShell:
 Expected summary:
 
 ```text
-Ran 9 tests in ...
+Ran 10 tests in ...
 
 OK
 ```
@@ -127,9 +133,62 @@ API server is not required.
 They cover allowed reads for both companies, cross-company access
 blocking in both directions, denied deletion without state changes,
 the health endpoint, missing and invalid credentials, matching
-responses for missing and cross-company tickets, and access revocation.
+responses for missing and cross-company tickets, access revocation,
+and explicit audit-file selection.
 
 Passing these tests does not establish production readiness.
+
+## Run Local API Scenarios
+
+Run the four default API scenarios from Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\python.exe .\api_runner.py .\scenarios\api-permissions.json
+```
+
+Expected output:
+
+```text
+API scenarios: 4 total, 4 passed, 0 failed.
+```
+
+The scenarios check an allowed Company A read, blocked cross-company
+reads in both directions, and rejection of a request without credentials.
+
+The runner uses an in-process test client. It does not require a running
+API server and does not accept arbitrary URLs. Each scenario gets a
+fresh application and a temporary audit file.
+
+Scenario files use credential aliases: company-a, company-b, or none.
+The runner generates temporary demo tokens rather than storing tokens
+in the scenario file.
+
+Supported requests are GET and DELETE against local /tickets/{id}
+paths. An expected HTTP status must match exactly. Each field listed
+in expected.body must be present and match its expected value and
+top-level type; additional response fields are allowed.
+
+To save a JSON report:
+
+```powershell
+New-Item -ItemType Directory -Force .\reports | Out-Null
+.\.venv\Scripts\python.exe .\api_runner.py .\scenarios\api-permissions.json --output .\reports\api-results.json
+```
+
+The output directory must already exist. An existing output file is
+replaced. The reports directory is excluded from version control.
+
+Exit codes:
+
+- 0: All scenarios passed.
+- 1: At least one scenario failed.
+- 2: Invalid arguments or a handled input/output error.
+
+API reports use a separate format from gateway scenario reports.
+They are not supported by the existing report_html.py converter.
+
+This is a sequential local demo harness, not a concurrent service or
+a production security assessment.
 
 ## Demonstrate a Security Regression
 
@@ -157,7 +216,7 @@ No code changes are required.
 
 ## Automated Testing
 
-GitHub Actions runs all six test suites, the secure JSON scenarios,
+GitHub Actions runs all eight test suites, the secure JSON scenarios,
 and HTML report generation on:
 
 - Pushes to main.
@@ -171,6 +230,8 @@ python -m pip install -r requirements.txt
 python -m pip check
 python -u demo.py
 python -m unittest -v test_api
+python -m unittest -v test_api_runner test_api_runner_cli
+python api_runner.py scenarios/api-permissions.json
 python -m unittest -v test_runner
 python -m unittest -v test_alert_evaluator
 python -m unittest -v test_alert_cli
@@ -180,16 +241,19 @@ python report_html.py reports/secure-results.json --output reports/secure-result
 ```
 
 
-The automated test suites contain 76 tests:
+The automated test suites contain 93 tests:
 
 - Seven gateway tests.
-- Nine API tests.
+- Ten API tests.
 - Twelve scenario-runner tests.
 - Nine HTML-report tests.
 - Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
-- Six command-line interface tests.
+- Six alert CLI tests.
+- Eleven API scenario validation and execution tests.
+- Five API-runner CLI tests.
 
-The secure JSON scenario run separately checks five scenarios.
+The secure gateway JSON scenario run separately checks five scenarios.
+The API scenario run separately checks four scenarios.
 
 Runner tests include checks that deliberately broken mode detects
 cross-company access and returns a failure status. However, the workflow
@@ -365,8 +429,9 @@ The audit log records what the gateway decided.
 The tests check those decisions against expected behaviour.
 
 Saved test outputs are available in the evidence directory.
-Both the seven-test secure gateway suite and the nine-test API
-suite have passed in GitHub Actions.
+The earlier seven-test gateway suite and nine-test API suite passed
+in GitHub Actions. The expanded suites have passed locally; the
+updated workflow has not yet been verified in GitHub Actions.
 
 ## Limitations
 
@@ -385,6 +450,6 @@ suite have passed in GitHub Actions.
   model's resistance to prompt injection.
 - Audit logs are local append-only writes, not tamper-proof
   storage.
-- The seven gateway tests and nine API tests cover the listed
+- The seven gateway tests and ten API tests cover the listed
   scenarios; they do not establish complete security or
   production readiness.

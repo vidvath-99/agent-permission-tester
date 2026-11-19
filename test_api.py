@@ -43,6 +43,39 @@ class APIPermissionTests(unittest.TestCase):
 
         self.client = self.enterContext(TestClient(self.app))
 
+    def test_explicit_audit_file_is_used(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit_file = Path(directory) / "explicit-audit.jsonl"
+            token_a = secrets.token_urlsafe(32)
+            token_b = secrets.token_urlsafe(32)
+
+            with patch.dict(
+                os.environ,
+                {
+                    "DEMO_TOKEN_A": token_a,
+                    "DEMO_TOKEN_B": token_b,
+                },
+            ):
+                app = create_app(audit_file=audit_file)
+
+            with TestClient(app) as client:
+                response = client.get(
+                    "/tickets/INC-001",
+                    headers={"Authorization": f"Bearer {token_a}"},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(audit_file.is_file())
+
+            records = [
+                line
+                for line in audit_file.read_text(
+                    encoding="utf-8"
+                ).splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(len(records), 1)
+
     def test_health(self):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)

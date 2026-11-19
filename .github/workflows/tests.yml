@@ -35,6 +35,11 @@ jobs:
 
       - name: Run API permission tests
         run: python -m unittest -v test_api
+      - name: Run API scenario runner tests
+        run: python -m unittest -v test_api_runner test_api_runner_cli
+
+      - name: Run API permission scenarios
+        run: python api_runner.py scenarios/api-permissions.json
         
       - name: Run scenario runner tests
         run: python -m unittest -v test_runner

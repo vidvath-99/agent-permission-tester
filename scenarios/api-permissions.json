@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "name": "Local API permission checks",
+  "scenarios": [
+    {
+      "id": "company-a-own-read",
+      "description": "Company A can read its own ticket.",
+      "credential": "company-a",
+      "method": "GET",
+      "path": "/tickets/INC-001",
+      "expected": {
+        "status_code": 200,
+        "body": {"tenant": "company-a"}
+      }
+    },
+    {
+      "id": "company-a-cross-company-read",
+      "description": "Company A cannot read Company B's ticket.",
+      "credential": "company-a",
+      "method": "GET",
+      "path": "/tickets/INC-002",
+      "expected": {
+        "status_code": 404,
+        "body": {"detail": "Ticket unavailable"}
+      }
+    },
+    {
+      "id": "company-b-cross-company-read",
+      "description": "Company B cannot read Company A's ticket.",
+      "credential": "company-b",
+      "method": "GET",
+      "path": "/tickets/INC-001",
+      "expected": {
+        "status_code": 404,
+        "body": {"detail": "Ticket unavailable"}
+      }
+    },
+    {
+      "id": "missing-credentials",
+      "description": "A ticket request without credentials is rejected.",
+      "credential": "none",
+      "method": "GET",
+      "path": "/tickets/INC-001",
+      "expected": {
+        "status_code": 401,
+        "body": {"detail": "Invalid or missing credentials"}
+      }
+    }
+  ]
+}

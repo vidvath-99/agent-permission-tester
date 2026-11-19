@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from gateway import Gateway
 
 
-def create_app():
+def create_app(*, audit_file=None):
     token_a = os.environ.get("DEMO_TOKEN_A", "")
     token_b = os.environ.get("DEMO_TOKEN_B", "")
 
@@ -22,7 +22,10 @@ def create_app():
             "of at least 32 characters before starting the API."
         )
 
-    gateway = Gateway(broken=False)
+    if audit_file is None:
+        gateway = Gateway(broken=False)
+    else:
+        gateway = Gateway(broken=False, audit_file=audit_file)
     gateway.identities["company-b-agent"] = {
         "tenant": "company-b",
         "scopes": {"tickets:read"},
