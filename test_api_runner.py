@@ -2,6 +2,10 @@ import copy
 import json
 import tempfile
 import unittest
+import os
+from unittest.mock import patch
+
+import api_runner
 from pathlib import Path
 
 from api_runner import load_suite, run_suite, validate_suite
@@ -177,6 +181,8 @@ class APISuiteExecutionTests(unittest.TestCase):
             {"tenant": "company-a"},
         )
 
+
+
     def test_wrong_expected_status_fails(self):
         suite = self.load_demo_suite()
         suite["scenarios"] = [suite["scenarios"][0]]
@@ -203,6 +209,119 @@ class APISuiteExecutionTests(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertIsNone(result["error"])
         self.assertEqual(result["actual"]["body"], {})
+
+
+
+
+class APISuiteRegressionTests(unittest.TestCase):
+    def load_demo_suite(self):
+        path = (
+            Path(__file__).resolve().parent
+            / "scenarios"
+            / "api-permissions.json"
+        )
+        return load_suite(path)
+
+    def test_each_scenario_gets_a_fresh_app_and_audit_path(self):
+        suite = self.load_demo_suite()
+        applications = []
+        audit_paths = []
+        original_factory = api_runner.create_app
+
+        def capture_app(*, audit_file=None):
+            app = original_factory(audit_file=audit_file)
+            applications.append(app)
+            audit_paths.append(Path(audit_file))
+            return app
+
+        with patch("api_runner.create_app", side_effect=capture_app):
+            report = run_suite(suite)
+
+        count = len(suite["scenarios"])
+        self.assertEqual(report["summary"]["passed"], count)
+        self.assertEqual(len(applications), count)
+        self.assertEqual(len({id(app) for app in applications}), count)
+        self.assertEqual(len(set(audit_paths)), count)
+        self.assertTrue(all(path.is_absolute() for path in audit_paths))
+        self.assertTrue(all(not path.exists() for path in audit_paths))
+
+    def test_demo_token_environment_is_restored(self):
+        suite = self.load_demo_suite()
+        suite["scenarios"] = [suite["scenarios"][0]]
+
+        for initially_present in (False, True):
+            with self.subTest(initially_present=initially_present):
+                with patch.dict(os.environ):
+                    if initially_present:
+                        os.environ["DEMO_TOKEN_A"] = "original-a-" + "a" * 32
+                        os.environ["DEMO_TOKEN_B"] = "original-b-" + "b" * 32
+                    else:
+                        os.environ.pop("DEMO_TOKEN_A", None)
+                        os.environ.pop("DEMO_TOKEN_B", None)
+
+                    before = dict(os.environ)
+
+                    report = run_suite(suite)
+
+                    self.assertEqual(report["summary"]["failed"], 0)
+                    self.assertEqual(dict(os.environ), before)
+
+    def test_factory_error_fails_one_scenario_and_continues(self):
+        suite = self.load_demo_suite()
+        original_factory = api_runner.create_app
+        calls = 0
+
+        def fail_first_app(*, audit_file=None):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise RuntimeError("private diagnostic marker")
+            return original_factory(audit_file=audit_file)
+
+        before = dict(os.environ)
+
+        with patch("api_runner.create_app", side_effect=fail_first_app):
+            report = run_suite(suite)
+
+        self.assertEqual(dict(os.environ), before)
+        self.assertEqual(calls, 4)
+        self.assertEqual(
+            report["summary"],
+            {"total": 4, "passed": 3, "failed": 1},
+        )
+
+        first = report["results"][0]
+        self.assertFalse(first["passed"])
+        self.assertIsNone(first["actual"])
+        self.assertEqual(
+            first["error"],
+            "Scenario execution failed (RuntimeError).",
+        )
+        self.assertNotIn("private diagnostic marker", json.dumps(report))
+        self.assertTrue(
+            all(result["passed"] for result in report["results"][1:])
+        )
+
+    def test_wrong_expected_body_value_or_type_fails(self):
+        for expected_tenant in ("company-b", 123):
+            with self.subTest(expected_tenant=expected_tenant):
+                suite = self.load_demo_suite()
+                suite["scenarios"] = [suite["scenarios"][0]]
+                suite["scenarios"][0]["expected"]["body"] = {
+                    "tenant": expected_tenant
+                }
+
+                report = run_suite(suite)
+                result = report["results"][0]
+
+                self.assertEqual(report["summary"]["failed"], 1)
+                self.assertFalse(result["passed"])
+                self.assertIsNone(result["error"])
+                self.assertEqual(result["actual"]["status_code"], 200)
+                self.assertEqual(
+                    result["actual"]["body"],
+                    {"tenant": "company-a"},
+                )
 
 
 if __name__ == "__main__":

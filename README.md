@@ -240,8 +240,7 @@ python -m unittest -v test_report_html
 python report_html.py reports/secure-results.json --output reports/secure-results.html
 ```
 
-
-The automated test suites contain 93 tests:
+The automated test suites contain 97 tests:
 
 - Seven gateway tests.
 - Ten API tests.
@@ -249,7 +248,7 @@ The automated test suites contain 93 tests:
 - Nine HTML-report tests.
 - Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
 - Six alert CLI tests.
-- Eleven API scenario validation and execution tests.
+- Fifteen API scenario validation, execution, and regression tests.
 - Five API-runner CLI tests.
 
 The secure gateway JSON scenario run separately checks five scenarios.
