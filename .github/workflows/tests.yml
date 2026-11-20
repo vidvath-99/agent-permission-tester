@@ -45,7 +45,7 @@ jobs:
 
       - name: Generate API HTML report
         run: python report_html.py reports/api-results.json --output reports/api-results.html
-        
+
       - name: Run scenario runner tests
         run: python -m unittest -v test_runner
 
@@ -64,3 +64,15 @@ jobs:
 
       - name: Generate secure HTML report
         run: python report_html.py reports/secure-results.json --output reports/secure-results.html
+
+      - name: Upload permission reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: permission-reports
+          path: |
+            reports/secure-results.json
+            reports/secure-results.html
+            reports/api-results.json
+            reports/api-results.html
+          if-no-files-found: error
+          retention-days: 7

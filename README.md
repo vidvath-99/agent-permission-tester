@@ -248,6 +248,11 @@ and actual HTTP status, and checked response-body fields. The displayed
 body contains only fields checked by the scenario, not necessarily the
 complete API response. An expected denial can be a passing test.
 
+Successful Permission tests workflow runs upload the gateway and API
+JSON/HTML reports as an artifact named permission-reports, retained for
+seven days. Open the workflow run in GitHub Actions and download the
+artifact from its Artifacts section.
+
 The automated test suites contain 102 tests:
 
 - Seven gateway tests.
