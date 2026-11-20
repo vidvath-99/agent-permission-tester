@@ -19,11 +19,46 @@ def format_decision(value):
     reason = text(value["reason"])
     return f"{decision}<br><small>Reason: {reason}</small>"
 
+def format_api_response(value):
+    if value is None:
+        return "No response"
+
+    status = text(value["status_code"])
+    body = text(json.dumps(value["body"], indent=2, ensure_ascii=False))
+    return (
+        f"HTTP {status}"
+        f"<br><small>Checked body fields:</small><pre>{body}</pre>"
+    )
+
+
+
 
 def render_report(report):
+    is_api = report.get("report_type") == "local_api_permissions"
+    formatter = format_api_response if is_api else format_decision
+
+    if is_api:
+        explanation = (
+            "PASS means the HTTP status and checked response-body fields "
+            "matched the expectation, including value types."
+        )
+    else:
+        explanation = (
+            "PASS means the observed decision and reason matched "
+            "the expectation."
+        )
+
     rows = []
 
     for result in report["results"]:
+        request_details = ""
+        if is_api:
+            request_details = (
+                f'<br><small>Request: {text(result["method"])} '
+                f'{text(result["path"])}</small>'
+                f'<br><small>Credential alias: '
+                f'{text(result["credential"])}</small>'
+            )
         passed = result["passed"]
         status = "PASS" if passed else "FAIL"
         css_class = "pass" if passed else "fail"
@@ -34,10 +69,11 @@ def render_report(report):
               <td>
                 <strong>{text(result["id"])}</strong>
                 <br><small>{text(result["description"])}</small>
+                {request_details}
               </td>
               <td class="{css_class}">{status}</td>
-              <td>{format_decision(result["expected"])}</td>
-              <td>{format_decision(result["actual"])}</td>
+              <td>{formatter(result["expected"])}</td>
+              <td>{formatter(result["actual"])}</td>
               <td>{text(result["error"])}</td>
             </tr>
             """
@@ -124,7 +160,7 @@ def render_report(report):
   </div>
 
   <footer>
-    PASS means the observed decision and reason matched the expectation.
+    {explanation}
     A denied request can therefore be a passing test.
     This local demo report does not establish production readiness.
   </footer>

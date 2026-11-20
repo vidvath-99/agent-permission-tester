@@ -231,21 +231,29 @@ python -m pip check
 python -u demo.py
 python -m unittest -v test_api
 python -m unittest -v test_api_runner test_api_runner_cli
-python api_runner.py scenarios/api-permissions.json
+python -c "from pathlib import Path; Path('reports').mkdir(exist_ok=True)"
+python api_runner.py scenarios/api-permissions.json --output reports/api-results.json
+python report_html.py reports/api-results.json --output reports/api-results.html
 python -m unittest -v test_runner
 python -m unittest -v test_alert_evaluator
 python -m unittest -v test_alert_cli
 python runner.py scenarios/permissions.json --report reports/secure-results.json
-python -m unittest -v test_report_html
+python -m unittest -v test_report_html test_report_html_api
 python report_html.py reports/secure-results.json --output reports/secure-results.html
 ```
 
-The automated test suites contain 97 tests:
+The HTML renderer supports both gateway and local API permission reports.
+API reports display the request method, path, credential alias, expected
+and actual HTTP status, and checked response-body fields. The displayed
+body contains only fields checked by the scenario, not necessarily the
+complete API response. An expected denial can be a passing test.
+
+The automated test suites contain 102 tests:
 
 - Seven gateway tests.
 - Ten API tests.
 - Twelve scenario-runner tests.
-- Nine HTML-report tests.
+- Fourteen HTML-report tests, including API rendering and CLI integration.
 - Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
 - Six alert CLI tests.
 - Fifteen API scenario validation, execution, and regression tests.
