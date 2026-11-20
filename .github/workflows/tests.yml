@@ -39,7 +39,11 @@ jobs:
         run: python -m unittest -v test_api_runner test_api_runner_cli
 
       - name: Run API permission scenarios
-        run: python api_runner.py scenarios/api-permissions.json
+        run: |
+          mkdir -p reports python api_runner.py scenarios/api-permissions.json --output reports/api-results.json
+
+      - name: Generate API HTML report
+        run: python report_html.py reports/api-results.json --output reports/api-results.html
         
       - name: Run scenario runner tests
         run: python -m unittest -v test_runner
