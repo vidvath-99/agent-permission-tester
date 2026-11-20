@@ -43,10 +43,6 @@ jobs:
           mkdir -p reports
           python api_runner.py scenarios/api-permissions.json --output reports/api-results.json
 
-      - name: Generate API HTML report
-        if: ${{ !cancelled() && hashFiles('reports/api-results.json') != '' }}
-        run: python report_html.py reports/api-results.json --output reports/api-results.html
-
       - name: Run scenario runner tests
         run: python -m unittest -v test_runner
 
@@ -66,6 +62,10 @@ jobs:
       - name: Generate secure HTML report
         if: ${{ !cancelled() && hashFiles('reports/secure-results.json') != '' }}
         run: python report_html.py reports/secure-results.json --output reports/secure-results.html
+        
+      - name: Generate API HTML report
+        if: ${{ !cancelled() && hashFiles('reports/api-results.json') != '' }}
+        run: python report_html.py reports/api-results.json --output reports/api-results.html
 
       - name: Upload permission reports
         if: ${{ !cancelled() }}
@@ -79,3 +79,8 @@ jobs:
             reports/api-results.html
           if-no-files-found: error
           retention-days: 7
+          
+      
+
+
+          
