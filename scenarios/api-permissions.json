@@ -45,6 +45,39 @@
         "status_code": 401,
         "body": {"detail": "Invalid or missing credentials"}
       }
+    },
+    {
+      "id": "company-b-own-read",
+      "description": "Company B can read its own ticket.",
+      "credential": "company-b",
+      "method": "GET",
+      "path": "/tickets/INC-002",
+      "expected": {
+        "status_code": 200,
+        "body": {"tenant": "company-b"}
+      }
+    },
+    {
+      "id": "company-a-missing-ticket",
+      "description": "A nonexistent ticket returns the same unavailable response as a cross-company read.",
+      "credential": "company-a",
+      "method": "GET",
+      "path": "/tickets/DOES-NOT-EXIST",
+      "expected": {
+        "status_code": 404,
+        "body": {"detail": "Ticket unavailable"}
+      }
+    },
+    {
+      "id": "company-a-delete-denied",
+      "description": "Company A cannot delete its own ticket with read-only permissions.",
+      "credential": "company-a",
+      "method": "DELETE",
+      "path": "/tickets/INC-001",
+      "expected": {
+        "status_code": 403,
+        "body": {}
+      }
     }
   ]
 }

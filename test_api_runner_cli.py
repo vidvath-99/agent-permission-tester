@@ -48,12 +48,12 @@ class APIRunnerCLITests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("4 total, 4 passed, 0 failed", stdout)
+        self.assertIn("7 total, 7 passed, 0 failed", stdout)
 
         report = json.loads(output_path.read_text(encoding="utf-8"))
         self.assertEqual(
             report["summary"],
-            {"total": 4, "passed": 4, "failed": 0},
+            {"total": 7, "passed": 7, "failed": 0},
         )
 
     def test_failing_suite_returns_one(self):
