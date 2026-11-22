@@ -169,7 +169,7 @@ class APISuiteExecutionTests(unittest.TestCase):
 
         self.assertEqual(
             report["summary"],
-            {"total": 4, "passed": 4, "failed": 0},
+            {"total": 7, "passed": 7, "failed": 0},
         )
         self.assertEqual(report["mode"], "IN_PROCESS")
         self.assertEqual(suite, original)
@@ -284,10 +284,10 @@ class APISuiteRegressionTests(unittest.TestCase):
             report = run_suite(suite)
 
         self.assertEqual(dict(os.environ), before)
-        self.assertEqual(calls, 4)
+        self.assertEqual(calls, 7)
         self.assertEqual(
             report["summary"],
-            {"total": 4, "passed": 3, "failed": 1},
+            {"total": 7, "passed": 6, "failed": 1},
         )
 
         first = report["results"][0]

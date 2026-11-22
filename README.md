@@ -66,7 +66,7 @@ virtual environment:
 | api_runner.py | Runs local API scenarios with optional JSON reports |
 | test_api_runner.py | Fifteen API scenario validation, execution, and regression tests |
 | test_api_runner_cli.py | Five API-runner CLI tests |
-| scenarios/api-permissions.json | Four default API scenarios |
+| scenarios/api-permissions.json | Seven default API scenarios |
 | runner.py | Runs JSON permission scenarios and writes JSON results |
 | test_runner.py | Twelve scenario-runner tests |
 | scenarios/permissions.json | Five default gateway permission scenarios |
@@ -141,7 +141,7 @@ Passing these tests does not establish production readiness.
 
 ## Run Local API Scenarios
 
-Run the four default API scenarios from Windows PowerShell:
+Run the seven default API scenarios from Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\python.exe .\api_runner.py .\scenarios\api-permissions.json
@@ -150,11 +150,17 @@ Run the four default API scenarios from Windows PowerShell:
 Expected output:
 
 ```text
-API scenarios: 4 total, 4 passed, 0 failed.
+API scenarios: 7 total, 7 passed, 0 failed.
 ```
 
-The scenarios check an allowed Company A read, blocked cross-company
-reads in both directions, and rejection of a request without credentials.
+The scenarios check allowed own-company reads for both companies,
+blocked cross-company reads in both directions, rejection of a request
+without credentials, a nonexistent-ticket response, and rejection of
+deletion with read-only permissions.
+
+The deletion scenario checks the HTTP rejection status. The API unit
+tests separately verify that a denied deletion leaves ticket data
+unchanged.
 
 The runner uses an in-process test client. It does not require a running
 API server and does not accept arbitrary URLs. Each scenario gets a
@@ -273,7 +279,7 @@ The automated test suites contain 102 tests:
 - Five API-runner CLI tests.
 
 The secure gateway JSON scenario run separately checks five scenarios.
-The API scenario run separately checks four scenarios.
+The API scenario run separately checks seven scenarios.
 
 Runner tests include checks that deliberately broken mode detects
 cross-company access and returns a failure status. However, the workflow
