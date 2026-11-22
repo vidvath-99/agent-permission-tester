@@ -19,11 +19,11 @@ unauthorised cross-company access.
 - Seven automated gateway permission tests.
 - Ten automated API permission and authentication tests.
 - Twelve automated scenario-runner tests.
-- Nine automated HTML-report tests.
+- Fourteen automated HTML-report tests, including API rendering and CLI integration.
 - Thirty-three automated audit-reader, evaluator, alert-writer, and
   file-processing tests.
 - Six automated alert CLI tests.
-- Eleven automated API scenario validation and execution tests.
+- Fifteen automated API scenario validation, execution, and regression tests.
 - Five automated API-runner CLI tests.
 - Local JSON Lines alerts with exact-evaluation duplicate prevention.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
@@ -64,7 +64,7 @@ virtual environment:
 | api.py | FastAPI application factory and bearer-token authentication |
 | test_api.py | Ten API permission and authentication tests |
 | api_runner.py | Runs local API scenarios with optional JSON reports |
-| test_api_runner.py | Eleven API scenario validation and execution tests |
+| test_api_runner.py | Fifteen API scenario validation, execution, and regression tests |
 | test_api_runner_cli.py | Five API-runner CLI tests |
 | scenarios/api-permissions.json | Four default API scenarios |
 | runner.py | Runs JSON permission scenarios and writes JSON results |
@@ -72,6 +72,7 @@ virtual environment:
 | scenarios/permissions.json | Five default gateway permission scenarios |
 | report_html.py | Converts JSON scenario results into an HTML report |
 | test_report_html.py | Nine HTML-report tests |
+| test_report_html_api.py | Five API HTML-rendering and CLI integration tests |
 | requirements.txt | Pinned Python dependencies |
 | README.md | Project documentation |
 | evidence/secure-tests.txt | Saved passing gateway secure-mode results |
@@ -185,7 +186,7 @@ Exit codes:
 - 2: Invalid arguments or a handled input/output error.
 
 API reports use a separate format from gateway scenario reports.
-They are not supported by the existing report_html.py converter.
+The report_html.py converter supports both formats.
 
 This is a sequential local demo harness, not a concurrent service or
 a production security assessment.
@@ -248,10 +249,17 @@ and actual HTTP status, and checked response-body fields. The displayed
 body contains only fields checked by the scenario, not necessarily the
 complete API response. An expected denial can be a passing test.
 
-Successful Permission tests workflow runs upload the gateway and API
-JSON/HTML reports as an artifact named permission-reports, retained for
-seven days. Open the workflow run in GitHub Actions and download the
-artifact from its Artifacts section.
+Permission tests workflow runs attempt to upload available gateway
+and API JSON/HTML reports as an artifact named permission-reports,
+retained for seven days, even when an earlier step fails, provided
+the workflow is not cancelled.
+
+HTML generation runs when the corresponding JSON report exists.
+An early failure may prevent some reports from being created.
+The upload step fails if none of the configured report files exist.
+
+Open the workflow run in GitHub Actions and download the artifact
+from its Artifacts section.
 
 The automated test suites contain 102 tests:
 
@@ -441,9 +449,10 @@ The audit log records what the gateway decided.
 The tests check those decisions against expected behaviour.
 
 Saved test outputs are available in the evidence directory.
-The earlier seven-test gateway suite and nine-test API suite passed
-in GitHub Actions. The expanded suites have passed locally; the
-updated workflow has not yet been verified in GitHub Actions.
+The expanded test suites and report-generation workflow passed in
+GitHub Actions in post-merge run #39 for commit 82302da.
+The deliberate gateway failure was also verified to leave CI failing
+while preserving downloadable reports.
 
 ## Limitations
 
