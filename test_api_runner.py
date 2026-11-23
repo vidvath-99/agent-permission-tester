@@ -1,13 +1,12 @@
 import copy
 import json
+import os
 import tempfile
 import unittest
-import os
+from pathlib import Path
 from unittest.mock import patch
 
 import api_runner
-from pathlib import Path
-
 from api_runner import load_suite, run_suite, validate_suite
 
 
@@ -151,6 +150,62 @@ class APISuiteValidationTests(unittest.TestCase):
 
                     self.assertEqual(validate_suite(suite), suite)
 
+    def test_verify_unchanged_is_accepted_without_modifying_input(self):
+        for credential in ("company-a", "company-b"):
+            with self.subTest(credential=credential):
+                suite = copy.deepcopy(self.suite)
+                scenario = suite["scenarios"][0]
+                scenario["method"] = "DELETE"
+                scenario["expected"] = {
+                    "status_code": 403,
+                    "body": {},
+                }
+                scenario["verify_unchanged"] = {
+                    "credential": credential,
+                }
+                original = copy.deepcopy(suite)
+
+                self.assertEqual(validate_suite(suite), original)
+                self.assertEqual(suite, original)
+
+    def test_invalid_verify_unchanged_is_rejected(self):
+        cases = [
+            ("DELETE", 403, None),
+            ("DELETE", 403, {}),
+            ("DELETE", 403, []),
+            ("DELETE", 403, {"credential": "none"}),
+            ("DELETE", 403, {"credential": "raw-bearer-token"}),
+            ("DELETE", 403, {"credential": None}),
+            ("DELETE", 403, {"credential": []}),
+            (
+                "DELETE",
+                403,
+                {"credential": "company-a", "path": "/tickets/INC-002"},
+            ),
+            ("GET", 403, {"credential": "company-a"}),
+            ("DELETE", 200, {"credential": "company-a"}),
+            ("DELETE", 302, {"credential": "company-a"}),
+            ("DELETE", 500, {"credential": "company-a"}),
+        ]
+
+        for method, status, verification in cases:
+            with self.subTest(
+                method=method,
+                status=status,
+                verification=verification,
+            ):
+                suite = copy.deepcopy(self.suite)
+                scenario = suite["scenarios"][0]
+                scenario["method"] = method
+                scenario["expected"] = {
+                    "status_code": status,
+                    "body": {},
+                }
+                scenario["verify_unchanged"] = verification
+
+                with self.assertRaises(ValueError):
+                    validate_suite(suite)
+
 
 class APISuiteExecutionTests(unittest.TestCase):
     def load_demo_suite(self):
@@ -181,8 +236,6 @@ class APISuiteExecutionTests(unittest.TestCase):
             {"tenant": "company-a"},
         )
 
-
-
     def test_wrong_expected_status_fails(self):
         suite = self.load_demo_suite()
         suite["scenarios"] = [suite["scenarios"][0]]
@@ -211,9 +264,74 @@ class APISuiteExecutionTests(unittest.TestCase):
         self.assertEqual(result["actual"]["body"], {})
 
 
-
-
 class APISuiteRegressionTests(unittest.TestCase):
+    def test_denied_delete_that_changes_visible_state_fails(self):
+        suite = self.load_demo_suite()
+        scenario = next(
+            scenario
+            for scenario in suite["scenarios"]
+            if scenario["id"] == "company-a-delete-denied"
+        )
+        suite["scenarios"] = [scenario]
+        scenario["verify_unchanged"] = {"credential": "company-a"}
+        original_suite = copy.deepcopy(suite)
+
+        original_factory = api_runner.create_app
+        calls = []
+
+        def create_faulty_app(*, audit_file=None):
+            app = original_factory(audit_file=audit_file)
+            gateway = app.state.gateway
+            original_call = gateway.call
+            visible_state = {"revision": 0}
+
+            def faulty_call(agent_id, tool, ticket_id):
+                calls.append((agent_id, tool, ticket_id))
+
+                if tool == "tickets:delete":
+                    visible_state["revision"] += 1
+
+                result = original_call(agent_id, tool, ticket_id)
+
+                if tool == "tickets:read":
+                    result = dict(result)
+                    result["regression_revision"] = visible_state["revision"]
+
+                return result
+
+            gateway.call = faulty_call
+            return app
+
+        with patch(
+            "api_runner.create_app",
+            side_effect=create_faulty_app,
+        ) as factory:
+            report = run_suite(suite)
+
+        factory.assert_called_once()
+        self.assertEqual(
+            calls,
+            [
+                ("soc-agent", "tickets:read", "INC-001"),
+                ("soc-agent", "tickets:delete", "INC-001"),
+                ("soc-agent", "tickets:read", "INC-001"),
+            ],
+        )
+        self.assertEqual(
+            report["summary"],
+            {"total": 1, "passed": 0, "failed": 1},
+        )
+
+        result = report["results"][0]
+        self.assertEqual(result["actual"]["status_code"], 403)
+        self.assertFalse(result["passed"])
+        self.assertEqual(
+            result["error"],
+            "State preservation check failed.",
+        )
+        self.assertEqual(suite, original_suite)
+        self.assertNotIn("regression_revision", json.dumps(report))
+
     def load_demo_suite(self):
         path = (
             Path(__file__).resolve().parent
@@ -325,4 +443,4 @@ class APISuiteRegressionTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+     unittest.main()

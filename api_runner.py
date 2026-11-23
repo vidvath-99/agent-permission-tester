@@ -40,7 +40,11 @@ def validate_suite(suite):
     for index, scenario in enumerate(scenarios, start=1):
         label = f"Scenario {index}"
 
-        if not isinstance(scenario, dict) or set(scenario) != required:
+        if not isinstance(scenario, dict):
+            raise ValueError(f"{label}: invalid scenario fields.")
+
+        fields = set(scenario)
+        if not required <= fields or fields - required - {"verify_unchanged"}:
             raise ValueError(f"{label}: invalid scenario fields.")
 
         for field in ("id", "description", "credential", "method", "path"):
@@ -73,6 +77,35 @@ def validate_suite(suite):
 
         if not isinstance(expected["body"], dict):
             raise ValueError(f"{label}: expected body must be an object.")
+
+
+        if "verify_unchanged" in scenario:
+            verification = scenario["verify_unchanged"]
+
+            if (
+                not isinstance(verification, dict)
+                or set(verification) != {"credential"}
+            ):
+                raise ValueError(
+                    f"{label}: verify_unchanged needs exactly credential."
+                )
+
+            if verification["credential"] not in ("company-a", "company-b"):
+                raise ValueError(
+                    f"{label}: verify_unchanged needs an authenticated "
+                    "credential alias."
+                )
+
+            if scenario["method"] != "DELETE":
+                raise ValueError(
+                    f"{label}: verify_unchanged is only supported for DELETE."
+                )
+
+            if not 400 <= expected["status_code"] <= 499:
+                raise ValueError(
+                    f"{label}: verify_unchanged requires an expected "
+                    "4xx rejection."
+                )
 
     return suite
 
@@ -118,13 +151,61 @@ def run_suite(suite):
                 if token is not None:
                     headers["Authorization"] = f"Bearer {token}"
 
+                verification = scenario.get("verify_unchanged")
+
                 with TestClient(app) as client:
+                    if verification is not None:
+                        verification_token = credentials[
+                            verification["credential"]
+                        ]
+                        verification_headers = {
+                            "Authorization": f"Bearer {verification_token}"
+                        }
+                        before_response = client.get(
+                            scenario["path"],
+                            headers=verification_headers,
+                            follow_redirects=False,
+                        )
+                        if before_response.status_code != 200:
+                            raise ValueError(
+                                "State verification requires a successful "
+                                "authorized read before DELETE."
+                            )
+
+                        before_body = before_response.json()
+                        if not isinstance(before_body, dict):
+                            raise ValueError(
+                                "State verification requires a JSON object."
+                            )
+
                     response = client.request(
                         scenario["method"],
                         scenario["path"],
                         headers=headers,
                         follow_redirects=False,
                     )
+
+                    if verification is not None:
+                        after_response = client.get(
+                            scenario["path"],
+                            headers=verification_headers,
+                            follow_redirects=False,
+                        )
+
+                        if after_response.status_code != 200:
+                            error = "State preservation check failed."
+                        else:
+                            after_body = after_response.json()
+                            if (
+                                not isinstance(after_body, dict)
+                                or json.dumps(
+                                    before_body, sort_keys=True
+                                )
+                                != json.dumps(
+                                    after_body, sort_keys=True
+                                )
+                            ):
+                                error = "State preservation check failed."
 
                 body = response.json()
                 if not isinstance(body, dict):
@@ -148,6 +229,7 @@ def run_suite(suite):
                 passed = (
                     response.status_code == expected["status_code"]
                     and body_matches
+                    and error is None
                 )
             except Exception as exc:
                 error = f"Scenario execution failed ({type(exc).__name__})."
