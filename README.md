@@ -23,7 +23,7 @@ unauthorised cross-company access.
 - Thirty-three automated audit-reader, evaluator, alert-writer, and
   file-processing tests.
 - Six automated alert CLI tests.
-- Fifteen automated API scenario validation, execution, and regression tests.
+- Eighteen automated API scenario validation, execution, and regression tests.
 - Five automated API-runner CLI tests.
 - Local JSON Lines alerts with exact-evaluation duplicate prevention.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
@@ -64,7 +64,7 @@ virtual environment:
 | api.py | FastAPI application factory and bearer-token authentication |
 | test_api.py | Ten API permission and authentication tests |
 | api_runner.py | Runs local API scenarios with optional JSON reports |
-| test_api_runner.py | Fifteen API scenario validation, execution, and regression tests |
+| test_api_runner.py | Eighteen API scenario validation, execution, and regression tests |
 | test_api_runner_cli.py | Five API-runner CLI tests |
 | scenarios/api-permissions.json | Seven default API scenarios |
 | runner.py | Runs JSON permission scenarios and writes JSON results |
@@ -158,8 +158,38 @@ blocked cross-company reads in both directions, rejection of a request
 without credentials, a nonexistent-ticket response, and rejection of
 deletion with read-only permissions.
 
-The deletion scenario checks the HTTP rejection status. The API unit
-tests separately verify that a denied deletion leaves ticket data
+The deletion scenario checks both the HTTP rejection status and
+preservation of API-visible ticket state using the optional
+`verify_unchanged` configuration:
+
+```json
+{
+  "id": "company-a-delete-denied",
+  "description": "A denied deletion leaves API-visible ticket state unchanged.",
+  "credential": "company-a",
+  "method": "DELETE",
+  "path": "/tickets/INC-001",
+  "verify_unchanged": {
+    "credential": "company-a"
+  },
+  "expected": {
+    "status_code": 403,
+    "body": {}
+  }
+}
+```
+
+The runner uses the credential specified in `verify_unchanged` to read
+the ticket before and after the DELETE request. It compares the full
+JSON responses, rather than only the fields in `expected.body`.
+The scenario fails if the ticket becomes unreadable or its API-visible
+state changes, even when the DELETE returns the expected rejection status.
+
+This optional check is for DELETE scenarios expecting a 4xx response.
+The verification credential must be authorized to read the ticket.
+
+The check compares API-visible state at the two read points. It does
+not establish that every internal state or external side effect remained
 unchanged.
 
 The runner uses an in-process test client. It does not require a running
@@ -267,7 +297,7 @@ The upload step fails if none of the configured report files exist.
 Open the workflow run in GitHub Actions and download the artifact
 from its Artifacts section.
 
-The automated test suites contain 102 tests:
+The automated test suites contain 105 tests:
 
 - Seven gateway tests.
 - Ten API tests.
@@ -275,7 +305,7 @@ The automated test suites contain 102 tests:
 - Fourteen HTML-report tests, including API rendering and CLI integration.
 - Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
 - Six alert CLI tests.
-- Fifteen API scenario validation, execution, and regression tests.
+- Eighteen API scenario validation, execution, and regression tests.
 - Five API-runner CLI tests.
 
 The secure gateway JSON scenario run separately checks five scenarios.
