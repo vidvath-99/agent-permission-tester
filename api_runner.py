@@ -133,6 +133,11 @@ def run_suite(suite):
             actual = None
             error = None
             passed = False
+            state_verification = (
+                {"status": "error"}
+                if "verify_unchanged" in scenario
+                else None
+            )
 
             try:
                 with patch.dict(
@@ -207,6 +212,9 @@ def run_suite(suite):
                             ):
                                 error = "State preservation check failed."
 
+                        state_verification = {
+                            "status": "failed" if error else "passed"
+                        }
                 body = response.json()
                 if not isinstance(body, dict):
                     raise ValueError("Expected a JSON object response.")
@@ -246,6 +254,7 @@ def run_suite(suite):
                         "body": dict(expected["body"]),
                     },
                     "actual": actual,
+                    "state_verification": state_verification,
                     "passed": passed,
                     "error": error,
                 }

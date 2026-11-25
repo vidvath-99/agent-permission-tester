@@ -33,6 +33,23 @@ def format_api_response(value):
 
 
 
+def format_state_verification(result):
+    if "state_verification" not in result:
+        return "State verification: Not recorded."
+
+    verification = result["state_verification"]
+    if verification is None:
+        return "State verification: Not requested."
+
+    labels = {
+        "passed": "Passed",
+        "failed": "Failed",
+        "error": "Error",
+    }
+    label = labels.get(verification["status"], "Unknown")
+    return f"State verification: {label}."
+
+
 def render_report(report):
     is_api = report.get("report_type") == "local_api_permissions"
     formatter = format_api_response if is_api else format_decision
@@ -40,7 +57,8 @@ def render_report(report):
     if is_api:
         explanation = (
             "PASS means the HTTP status and checked response-body fields "
-            "matched the expectation, including value types."
+            "matched the expectation, including value types, and any "
+            "requested state verification passed."
         )
     else:
         explanation = (
@@ -58,6 +76,7 @@ def render_report(report):
                 f'{text(result["path"])}</small>'
                 f'<br><small>Credential alias: '
                 f'{text(result["credential"])}</small>'
+                f'<br><small>{format_state_verification(result)}</small>'
             )
         passed = result["passed"]
         status = "PASS" if passed else "FAIL"

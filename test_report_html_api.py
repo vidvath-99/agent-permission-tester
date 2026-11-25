@@ -27,6 +27,28 @@ class APIHTMLReportTests(unittest.TestCase):
             ],
         }
 
+    def test_missing_state_verification_is_not_recorded(self):
+        html = render_report(self.report)
+
+        self.assertIn("State verification: Not recorded.", html)
+        self.assertNotIn("State verification: Not requested.", html)
+
+    def test_state_verification_labels(self):
+        cases = [
+            (None, "Not requested"),
+            ({"status": "passed"}, "Passed"),
+            ({"status": "failed"}, "Failed"),
+            ({"status": "error"}, "Error"),
+        ]
+        result = self.report["results"][0]
+
+        for verification, label in cases:
+            with self.subTest(verification=verification):
+                result["state_verification"] = verification
+                html = render_report(self.report)
+                self.assertIn(f"State verification: {label}.", html)
+                self.assertNotIn("State verification: Not recorded.", html)
+
     def test_expected_denial_renders_as_pass(self):
         html = render_report(self.report)
 
@@ -144,6 +166,39 @@ class APIHTMLReportTests(unittest.TestCase):
             self.assertNotIn('class="fail">FAIL</td>', html)
             self.assertIn("Checked body fields:", html)
             self.assertIn("including value types", html)
+
+            verification_counts = {
+                "Not requested": 0,
+                "Passed": 0,
+                "Failed": 0,
+                "Error": 0,
+            }
+            labels = {
+                "passed": "Passed",
+                "failed": "Failed",
+                "error": "Error",
+            }
+            for scenario in report["results"]:
+                self.assertIn("state_verification", scenario)
+                verification = scenario["state_verification"]
+                if verification is None:
+                    verification_counts["Not requested"] += 1
+                else:
+                    self.assertEqual(set(verification), {"status"})
+                    verification_counts[labels[verification["status"]]] += 1
+
+            for label, count in verification_counts.items():
+                self.assertEqual(
+                    html.count(f"State verification: {label}."),
+                    count,
+                )
+
+            self.assertEqual(
+                html.count("State verification:"),
+                len(report["results"]),
+            )
+            self.assertNotIn("State verification: Not recorded.", html)
+            self.assertIn("requested state verification passed.", html)
 
 
 
