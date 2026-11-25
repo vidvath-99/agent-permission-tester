@@ -19,11 +19,11 @@ unauthorised cross-company access.
 - Seven automated gateway permission tests.
 - Ten automated API permission and authentication tests.
 - Twelve automated scenario-runner tests.
-- Fourteen automated HTML-report tests, including API rendering and CLI integration.
+- Seventeen automated HTML-report tests, including API rendering and CLI integration.
 - Thirty-three automated audit-reader, evaluator, alert-writer, and
   file-processing tests.
 - Six automated alert CLI tests.
-- Eighteen automated API scenario validation, execution, and regression tests.
+- Twenty-one automated API scenario validation, execution, and regression tests.
 - Five automated API-runner CLI tests.
 - Local JSON Lines alerts with exact-evaluation duplicate prevention.
 - JSON-defined permission scenarios with expected decisions and denial reasons.
@@ -64,15 +64,15 @@ virtual environment:
 | api.py | FastAPI application factory and bearer-token authentication |
 | test_api.py | Ten API permission and authentication tests |
 | api_runner.py | Runs local API scenarios with optional JSON reports |
-| test_api_runner.py | Eighteen API scenario validation, execution, and regression tests |
+| test_api_runner.py | Twenty-one API scenario validation, execution, and regression tests |
 | test_api_runner_cli.py | Five API-runner CLI tests |
 | scenarios/api-permissions.json | Seven default API scenarios |
 | runner.py | Runs JSON permission scenarios and writes JSON results |
 | test_runner.py | Twelve scenario-runner tests |
 | scenarios/permissions.json | Five default gateway permission scenarios |
 | report_html.py | Converts JSON scenario results into an HTML report |
-| test_report_html.py | Nine HTML-report tests |
-| test_report_html_api.py | Five API HTML-rendering and CLI integration tests |
+| test_report_html.py | Ten HTML-report tests |
+| test_report_html_api.py | Seven API HTML-rendering and CLI integration tests |
 | requirements.txt | Pinned Python dependencies |
 | README.md | Project documentation |
 | evidence/secure-tests.txt | Saved passing gateway secure-mode results |
@@ -224,6 +224,45 @@ Exit codes:
 API reports use a separate format from gateway scenario reports.
 The report_html.py converter supports both formats.
 
+### State Verification Results
+
+Every API scenario result includes `state_verification`:
+
+| JSON value | Meaning |
+|---|---|
+| `null` | State verification was not requested. |
+| `{"status": "passed"}` | Verification confirmed unchanged API-visible state. |
+| `{"status": "failed"}` | The after-read was unsuccessful or API-visible state changed. |
+| `{"status": "error"}` | Requested verification could not be completed because execution encountered an error. |
+
+The verification object contains only `status`, not snapshots or tokens.
+
+API HTML reports display one of these labels:
+
+- State verification: Not requested.
+- State verification: Passed.
+- State verification: Failed.
+- State verification: Error.
+
+Older API results missing the field display
+"State verification: Not recorded.", which is distinct from verification
+not being requested. Gateway reports omit these labels.
+
+A scenario passes only when the expected HTTP status and checked
+response-body fields match and any requested state verification passes.
+A passed state verification alone does not establish that the scenario passed.
+
+To convert the saved API JSON report to HTML and open it:
+
+```powershell
+.\.venv\Scripts\python.exe .\report_html.py .\reports\api-results.json --output .\reports\api-results.html
+Start-Process ".\reports\api-results.html"
+```
+
+Generating HTML displays saved results; it does not rerun the scenarios
+or state verification.
+
+
 This is a sequential local demo harness, not a concurrent service or
 a production security assessment.
 
@@ -297,15 +336,17 @@ The upload step fails if none of the configured report files exist.
 Open the workflow run in GitHub Actions and download the artifact
 from its Artifacts section.
 
-The automated test suites contain 105 tests:
+The automated test suites contain 111 tests: 104 discovered by
+`python -m unittest discover`, plus seven gateway tests run separately
+through `demo.py`:
 
 - Seven gateway tests.
 - Ten API tests.
 - Twelve scenario-runner tests.
-- Fourteen HTML-report tests, including API rendering and CLI integration.
+- Seventeen HTML-report tests, including API rendering and CLI integration.
 - Thirty-three audit-reader, evaluator, alert-writer, and file-processing tests.
 - Six alert CLI tests.
-- Eighteen API scenario validation, execution, and regression tests.
+- Twenty-one API scenario validation, execution, and regression tests.
 - Five API-runner CLI tests.
 
 The secure gateway JSON scenario run separately checks five scenarios.
