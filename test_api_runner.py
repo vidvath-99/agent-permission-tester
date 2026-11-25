@@ -350,6 +350,47 @@ class APISuiteRegressionTests(unittest.TestCase):
             "Scenario execution failed (ValueError).",
         )
 
+    def test_non_json_after_read_reports_verification_error(self):
+        import json
+        from unittest.mock import MagicMock
+
+        suite = self.load_demo_suite()
+        scenario = next(
+            scenario
+            for scenario in suite["scenarios"]
+            if scenario["id"] == "company-a-delete-denied"
+        )
+        suite["scenarios"] = [scenario]
+        scenario["verify_unchanged"] = {"credential": "company-a"}
+
+        with patch("api_runner.TestClient") as client_class:
+            client = client_class.return_value.__enter__.return_value
+            before = MagicMock()
+            before.status_code = 200
+            before.json.return_value = {"tenant": "company-a"}
+            after = MagicMock()
+            after.status_code = 200
+            after.json.side_effect = json.JSONDecodeError("bad", "", 0)
+            client.get.side_effect = [before, after]
+            response = client.request.return_value
+            response.status_code = scenario["expected"]["status_code"]
+            response.json.return_value = dict(scenario["expected"]["body"])
+
+            report = run_suite(suite)
+
+            self.assertEqual(client.get.call_count, 2)
+            client.request.assert_called_once()
+
+        result = report["results"][0]
+        self.assertFalse(result["passed"])
+        self.assertEqual(
+            result["state_verification"],
+            {"status": "error"},
+        )
+        self.assertEqual(
+            result["error"],
+            "Scenario execution failed (JSONDecodeError).",
+        )
     def test_denied_delete_that_changes_visible_state_fails(self):
         suite = self.load_demo_suite()
         scenario = next(
