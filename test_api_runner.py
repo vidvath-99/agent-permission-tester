@@ -263,8 +263,93 @@ class APISuiteExecutionTests(unittest.TestCase):
         self.assertIsNone(result["error"])
         self.assertEqual(result["actual"]["body"], {})
 
+    def test_state_verification_outcomes_are_reported(self):
+        suite = self.load_demo_suite()
+
+        report = run_suite(suite)
+
+        for result in report["results"]:
+            with self.subTest(scenario=result["id"]):
+                self.assertIn("state_verification", result)
+                if result["id"] == "company-a-delete-denied":
+                    self.assertEqual(
+                        result["state_verification"],
+                        {"status": "passed"},
+                    )
+                else:
+                    self.assertIsNone(result["state_verification"])
+
 
 class APISuiteRegressionTests(unittest.TestCase):
+    def test_unsuccessful_after_read_reports_verification_failure(self):
+        suite = self.load_demo_suite()
+        scenario = next(
+            scenario
+            for scenario in suite["scenarios"]
+            if scenario["id"] == "company-a-delete-denied"
+        )
+        suite["scenarios"] = [scenario]
+        scenario["verify_unchanged"] = {"credential": "company-a"}
+
+        with patch("api_runner.TestClient") as client_class:
+            client = client_class.return_value.__enter__.return_value
+            before = unittest.mock.Mock()
+            before.status_code = 200
+            before.json.return_value = {"id": "INC-001"}
+            after = unittest.mock.Mock()
+            after.status_code = 500
+            client.get.side_effect = [before, after]
+            response = client.request.return_value
+            response.status_code = scenario["expected"]["status_code"]
+            response.json.return_value = dict(scenario["expected"]["body"])
+
+            report = run_suite(suite)
+
+            self.assertEqual(client.get.call_count, 2)
+            client.request.assert_called_once()
+
+        result = report["results"][0]
+        self.assertFalse(result["passed"])
+        self.assertEqual(
+            result["state_verification"],
+            {"status": "failed"},
+        )
+        self.assertEqual(
+            result["error"],
+            "State preservation check failed.",
+        )
+
+    def test_unsuccessful_before_read_reports_verification_error(self):
+        suite = self.load_demo_suite()
+        scenario = next(
+            scenario
+            for scenario in suite["scenarios"]
+            if scenario["id"] == "company-a-delete-denied"
+        )
+        suite["scenarios"] = [scenario]
+        scenario["verify_unchanged"] = {"credential": "company-a"}
+
+        with patch("api_runner.TestClient") as client_class:
+            client = client_class.return_value.__enter__.return_value
+            client.get.return_value.status_code = 403
+
+            report = run_suite(suite)
+
+            client.get.assert_called_once()
+            client.request.assert_not_called()
+
+        result = report["results"][0]
+        self.assertFalse(result["passed"])
+        self.assertIsNone(result["actual"])
+        self.assertEqual(
+            result["state_verification"],
+            {"status": "error"},
+        )
+        self.assertEqual(
+            result["error"],
+            "Scenario execution failed (ValueError).",
+        )
+
     def test_denied_delete_that_changes_visible_state_fails(self):
         suite = self.load_demo_suite()
         scenario = next(
@@ -325,6 +410,10 @@ class APISuiteRegressionTests(unittest.TestCase):
         result = report["results"][0]
         self.assertEqual(result["actual"]["status_code"], 403)
         self.assertFalse(result["passed"])
+        self.assertEqual(
+            result["state_verification"],
+            {"status": "failed"},
+        )
         self.assertEqual(
             result["error"],
             "State preservation check failed.",

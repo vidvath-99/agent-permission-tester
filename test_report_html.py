@@ -35,6 +35,14 @@ class HTMLReportTests(unittest.TestCase):
             ],
         }
 
+    def test_non_api_report_omits_state_verification(self):
+        html = render_report(self.report)
+        self.assertNotIn("State verification:", html)
+
+        self.report["results"][0]["state_verification"] = {"status": "passed"}
+        html = render_report(self.report)
+        self.assertNotIn("State verification:", html)
+
     def test_renders_suite_and_summary(self):
         html = render_report(self.report)
 
