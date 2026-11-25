@@ -68,7 +68,7 @@
         "body": {"detail": "Ticket unavailable"}
       }
     },
-           {
+    {
       "id": "company-a-delete-denied",
       "description": "Company A cannot delete its own ticket with read-only permissions, and its API-visible state remains unchanged.",
       "credential": "company-a",
