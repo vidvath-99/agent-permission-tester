@@ -55,6 +55,10 @@ jobs:
       - name: Run secure JSON scenarios
         run: python runner.py scenarios/permissions.json --report reports/secure-results.json
 
+      
+      
+      
+      
       - name: Run full test discovery
         run: python -m unittest discover -v
 
