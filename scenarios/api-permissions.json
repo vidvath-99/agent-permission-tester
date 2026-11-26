@@ -81,6 +81,48 @@
         "status_code": 403,
         "body": {}
       }
+    },
+    {
+      "id": "company-a-cross-company-delete-denied",
+      "description": "Company A cannot delete Company B's ticket, and Company B's API-visible state remains unchanged.",
+      "credential": "company-a",
+      "method": "DELETE",
+      "path": "/tickets/INC-002",
+      "verify_unchanged": {
+        "credential": "company-b"
+      },
+      "expected": {
+        "status_code": 403,
+        "body": {"detail": "Action not permitted"}
+      }
+    },
+    {
+      "id": "company-b-cross-company-delete-denied",
+      "description": "Company B cannot delete Company A's ticket, and Company A's API-visible state remains unchanged.",
+      "credential": "company-b",
+      "method": "DELETE",
+      "path": "/tickets/INC-001",
+      "verify_unchanged": {
+        "credential": "company-a"
+      },
+      "expected": {
+        "status_code": 403,
+        "body": {"detail": "Action not permitted"}
+      }
+    },
+    {
+      "id": "company-b-delete-denied",
+      "description": "Company B cannot delete its own ticket with read-only permissions, and its API-visible state remains unchanged.",
+      "credential": "company-b",
+      "method": "DELETE",
+      "path": "/tickets/INC-002",
+      "verify_unchanged": {
+        "credential": "company-b"
+      },
+      "expected": {
+        "status_code": 403,
+        "body": {"detail": "Action not permitted"}
+      }
     }
   ]
 }

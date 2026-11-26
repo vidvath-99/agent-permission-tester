@@ -224,7 +224,7 @@ class APISuiteExecutionTests(unittest.TestCase):
 
         self.assertEqual(
             report["summary"],
-            {"total": 7, "passed": 7, "failed": 0},
+            {"total": 10, "passed": 10, "failed": 0},
         )
         self.assertEqual(report["mode"], "IN_PROCESS")
         self.assertEqual(suite, original)
@@ -271,7 +271,12 @@ class APISuiteExecutionTests(unittest.TestCase):
         for result in report["results"]:
             with self.subTest(scenario=result["id"]):
                 self.assertIn("state_verification", result)
-                if result["id"] == "company-a-delete-denied":
+                if result["id"] in {
+                    "company-a-delete-denied",
+                    "company-a-cross-company-delete-denied",
+                    "company-b-cross-company-delete-denied",
+                    "company-b-delete-denied",
+                }:
                     self.assertEqual(
                         result["state_verification"],
                         {"status": "passed"},
@@ -532,10 +537,10 @@ class APISuiteRegressionTests(unittest.TestCase):
             report = run_suite(suite)
 
         self.assertEqual(dict(os.environ), before)
-        self.assertEqual(calls, 7)
+        self.assertEqual(calls, 10)
         self.assertEqual(
             report["summary"],
-            {"total": 7, "passed": 6, "failed": 1},
+            {"total": 10, "passed": 9, "failed": 1},
         )
 
         first = report["results"][0]

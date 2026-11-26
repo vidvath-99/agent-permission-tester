@@ -48,12 +48,12 @@ class APIRunnerCLITests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("7 total, 7 passed, 0 failed", stdout)
+        self.assertIn("10 total, 10 passed, 0 failed", stdout)
 
         report = json.loads(output_path.read_text(encoding="utf-8"))
         self.assertEqual(
             report["summary"],
-            {"total": 7, "passed": 7, "failed": 0},
+            {"total": 10, "passed": 10, "failed": 0},
         )
 
     def test_failing_suite_returns_one(self):
@@ -86,14 +86,18 @@ class APIRunnerCLITests(unittest.TestCase):
             result["id"]: result["state_verification"]
             for result in report["results"]
         }
-        self.assertEqual(
-            statuses["company-a-delete-denied"],
-            {"status": "passed"},
-        )
+        verified = {
+            "company-a-delete-denied",
+            "company-a-cross-company-delete-denied",
+            "company-b-cross-company-delete-denied",
+            "company-b-delete-denied",
+        }
+        for key in verified:
+            self.assertEqual(statuses[key], {"status": "passed"})
         others = [
             value
             for key, value in statuses.items()
-            if key != "company-a-delete-denied"
+            if key not in verified
         ]
         self.assertEqual(len(others), 6)
         self.assertTrue(all(value is None for value in others))
