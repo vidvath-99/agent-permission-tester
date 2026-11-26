@@ -569,3 +569,9 @@ Practice change.
 ```powershell
 pytest
 ```
+
+## Before and After Report
+
+```powershell
+python compare_reports.py
+```
