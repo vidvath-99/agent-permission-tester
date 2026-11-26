@@ -122,7 +122,7 @@ class APIHTMLReportTests(unittest.TestCase):
 
         self.assertEqual(
             report["summary"],
-            {"total": 7, "passed": 7, "failed": 0},
+            {"total": 10, "passed": 10, "failed": 0},
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -156,12 +156,12 @@ class APIHTMLReportTests(unittest.TestCase):
 
             self.assertIn("<!doctype html>", html)
             self.assertIn("Mode: IN_PROCESS", html)
-            self.assertIn("Total: 7", html)
-            self.assertIn("Passed: 7", html)
+            self.assertIn("Total: 10", html)
+            self.assertIn("Passed: 10", html)
             self.assertIn("Failed: 0", html)
             self.assertEqual(
                 html.count('class="pass">PASS</td>'),
-                7,
+                10,
             )
             self.assertNotIn('class="fail">FAIL</td>', html)
             self.assertIn("Checked body fields:", html)
