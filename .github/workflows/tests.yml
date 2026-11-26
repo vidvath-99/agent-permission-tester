@@ -55,10 +55,6 @@ jobs:
       - name: Run secure JSON scenarios
         run: python runner.py scenarios/permissions.json --report reports/secure-results.json
 
-      
-      
-      
-      
       - name: Run full test discovery
         run: python -m unittest discover -v
 
@@ -68,7 +64,7 @@ jobs:
       - name: Generate secure HTML report
         if: ${{ !cancelled() && hashFiles('reports/secure-results.json') != '' }}
         run: python report_html.py reports/secure-results.json --output reports/secure-results.html
-        
+
       - name: Generate API HTML report
         if: ${{ !cancelled() && hashFiles('reports/api-results.json') != '' }}
         run: python report_html.py reports/api-results.json --output reports/api-results.html
@@ -85,8 +81,3 @@ jobs:
             reports/api-results.html
           if-no-files-found: error
           retention-days: 7
-          
-      
-
-
-          
