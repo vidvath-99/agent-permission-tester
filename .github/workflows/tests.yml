@@ -65,6 +65,9 @@ jobs:
         if: ${{ !cancelled() && hashFiles('reports/secure-results.json') != '' }}
         run: python report_html.py reports/secure-results.json --output reports/secure-results.html
 
+      - name: Summarize API verification results
+        if: ${{ !cancelled() && hashFiles('reports/api-results.json') != '' }}
+        run: python ci_summary.py reports/api-results.json >> "$GITHUB_STEP_SUMMARY"
       - name: Generate API HTML report
         if: ${{ !cancelled() && hashFiles('reports/api-results.json') != '' }}
         run: python report_html.py reports/api-results.json --output reports/api-results.html
