@@ -563,3 +563,9 @@ while preserving downloadable reports.
 
 
 Practice change.
+
+## Running tests
+
+```powershell
+pytest
+```
