@@ -575,3 +575,27 @@ pytest
 ```powershell
 python compare_reports.py
 ```
+
+## Splunk integration
+
+`splunk_export.py` converts the BROKEN and SECURE reports into JSONL events
+(10 events, one per scenario per run mode) for ingestion into Splunk.
+
+1. Run the exporter to produce `reports/splunk-events.jsonl`.
+2. In Splunk: Settings > Add Data > Upload, source type `_json`, index `agent_perms`.
+3. Verify (time range: All time):
+   `index=agent_perms | stats count by run_mode, scenario, decision, passed`
+
+### Detection
+
+`index=agent_perms passed=false` returns the one policy violation:
+BROKEN `cross-company-read` (soc-agent read INC-002; expected deny, got allow).
+Saved as the hourly alert "Agent permission violation" (severity High).
+
+### Dashboard: Agent Permission Posture
+
+- Pass rate by run mode: BROKEN 80%, SECURE 100%
+- Violations: 1
+- Cross-company-read BROKEN vs SECURE comparison
+
+![Dashboard](docs/splunk-dashboard.png)
